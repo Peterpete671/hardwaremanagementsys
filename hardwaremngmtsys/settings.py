@@ -43,6 +43,9 @@ INSTALLED_APPS = [
     'rest_framework.authtoken',
     'accounts',
     'inventory',
+    'sales',
+    'finance',
+    'audit',
 ]
 
 MIDDLEWARE = [

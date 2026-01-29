@@ -29,7 +29,7 @@ class Category(models.Model):
     is_active = models.BooleanField(default=True)
 
     class Meta:
-        db_table = 'category',
+        db_table = 'category'
         verbose_name = 'Category'
         verbose_name_plural = 'Categories'
 
@@ -75,10 +75,10 @@ class Product(models.Model):
         help_text="False for services or non-tracked items"
     )
     is_active = models.BooleanField(default=True)
-    created_at = models.BooleanField(default=True)
+    created_at = models.DateTimeField(auto_now_add=True, db_index=True)
 
     class Meta:
-        db_table = 'product',
+        db_table = 'product'
         verbose_name = 'Product'
         verbose_name_plural = 'Products'
 

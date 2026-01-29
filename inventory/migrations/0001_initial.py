@@ -40,7 +40,7 @@ class Migration(migrations.Migration):
             options={
                 'verbose_name': 'Category',
                 'verbose_name_plural': 'Categories',
-                'db_table': ('category',),
+                 'db_table': 'category',
             },
         ),
         migrations.CreateModel(
@@ -59,7 +59,7 @@ class Migration(migrations.Migration):
             options={
                 'verbose_name': 'Product',
                 'verbose_name_plural': 'Products',
-                'db_table': ('product',),
+                 'db_table': 'product',
             },
         ),
         migrations.CreateModel(
