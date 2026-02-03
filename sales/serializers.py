@@ -115,4 +115,3 @@ class SaleCreateSerializer(serializers.ModelSerializer):
 
 
 
-
