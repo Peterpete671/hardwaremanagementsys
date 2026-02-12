@@ -70,7 +70,7 @@ class StockMovementSerializer(serializers.ModelSerializer):
         ]
         read_only_fields = ['id', 'created_at']
 
-class StockMovementCreate(serializers.ModelSerializer):
+class StockMovementCreateSerializer(serializers.ModelSerializer):
     """
     Serializer for creating stock movements, used by business logic
     """
@@ -81,16 +81,16 @@ class StockMovementCreate(serializers.ModelSerializer):
             'reference_type', 'reference_id', 'created_by'
         ]
 
-    class StockLevelSerializer(serializers.Serializer):
-        """
-        Serializer for computed stock levels - not a model
-        GET /api/stock endpoint
-        """
+class StockLevelSerializer(serializers.Serializer):
+    """
+    Serializer for computed stock levels - not a model
+    GET /api/stock endpoint
+    """
 
-        product_id = serializers.UUIDField()
-        product_sku = serializers.CharField()
-        product_name = serializers.CharField()
-        warehouse_id = serializers.UUIDField()
-        warehouse_name = serializers.CharField()
-        current_quantity = serializers.DecimalField(max_digits=15, decimal_places=3)
-        last_movement = serializers.DateTimeField(allow_null=True)
+    product_id = serializers.UUIDField()
+    product_sku = serializers.CharField()
+    product_name = serializers.CharField()
+    warehouse_id = serializers.UUIDField()
+    warehouse_name = serializers.CharField()
+    current_quantity = serializers.DecimalField(max_digits=15, decimal_places=3)
+    last_movement = serializers.DateTimeField(allow_null=True)
