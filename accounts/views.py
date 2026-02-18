@@ -112,7 +112,7 @@ class UserViewSet(viewsets.ModelViewSet):
             return User.objects.prefetch_related('user_roles__role')
         return User.objects.all()
 
-    @action(detaail=True, methods=['post'], url_path='roles')
+    @action(detail=True, methods=['post'], url_path='roles')
     def assign_role(self, request, pk=None):
         """
         Assign a role to a user.
