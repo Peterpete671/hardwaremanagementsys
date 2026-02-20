@@ -1,6 +1,5 @@
 """
-Views for Accounts app
-Handles authentication, users, and role management.
+Views for Accounts app with role-based permissions.
 """
 
 from rest_framework import viewsets, status, permissions
@@ -15,22 +14,19 @@ from .serializers import (
     UserSerializer, UserCreateSerializer, UserWithRolesSerializer,
     RoleSerializer, UserRoleSerializer
 )
+from .permissions import CanManageUsers, IsAdmin
+
 
 class AuthViewSet(viewsets.ViewSet):
     """
-    Handles User authentication (login and logout)
-    Endpoints
-    -POST /api/auth/login/
-    -POST /api/auth/logout/
+    Handles user authentication (login/logout).
+    No role restrictions on login/logout.
     """
     permission_classes = [permissions.AllowAny]
 
     @action(detail=False, methods=['post'])
     def login(self, request):
-        """
-        Authenticate user and return tokens
-        POST /api/auth/login
-        """
+        """Authenticate user and return token."""
         username = request.data.get('username')
         password = request.data.get('password')
 
@@ -54,25 +50,19 @@ class AuthViewSet(viewsets.ViewSet):
                 status=status.HTTP_403_FORBIDDEN
             )
 
-        #Get/create token
         token, created = Token.objects.get_or_create(user=user)
-
-        #Get user with roles
         serializer = UserWithRolesSerializer(user)
 
         return Response({
             'token': token.key,
             'user': serializer.data
         })
+
     @action(detail=False, methods=['post'])
     def logout(self, request):
-        """
-        Logout user - delete token
-        POST /api/auth/logout
-        """
-
+        """Logout user by deleting their token."""
         if request.user.is_authenticated:
-            Token. objects.filter(user=request.user).delete()
+            Token.objects.filter(user=request.user).delete()
             return Response({'message': 'Successfully logged out'})
 
         return Response(
@@ -80,26 +70,17 @@ class AuthViewSet(viewsets.ViewSet):
             status=status.HTTP_401_UNAUTHORIZED
         )
 
+
 class UserViewSet(viewsets.ModelViewSet):
     """
-    ViewSet for User Management
-
-    Endpoints:
-    -GET /api/users/
-    -POST /api/users/
-    -GET /api/users/{id}/
-    -PUT /api/users/{id}/
-    -PATCH /api/users/{id}/
-    -DELETE /api/users/{id}/
+    ViewSet for User management.
+    Only ADMIN can create/update/delete users.
+    All authenticated users can view users.
     """
-
     queryset = User.objects.all()
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [permissions.IsAuthenticated, CanManageUsers]
 
     def get_serializer_class(self):
-        """
-        Use different serializers for different actions.
-        """
         if self.action == 'create':
             return UserCreateSerializer
         elif self.action == 'retrieve':
@@ -107,23 +88,22 @@ class UserViewSet(viewsets.ModelViewSet):
         return UserSerializer
 
     def get_queryset(self):
-        """Optimize query with role prefetching"""
         if self.action == 'retrieve':
             return User.objects.prefetch_related('user_roles__role')
         return User.objects.all()
 
-    @action(detail=True, methods=['post'], url_path='roles')
+    @action(detail=True, methods=['post'], url_path='roles', permission_classes=[IsAdmin])
     def assign_role(self, request, pk=None):
         """
         Assign a role to a user.
-        POST: /api/users/{id}/roles/
+        Only ADMIN can assign roles.
         """
         user = self.get_object()
         role_id = request.data.get('role_id')
 
         if not role_id:
             return Response(
-            {'error': 'role_id is required'},
+                {'error': 'role_id is required'},
                 status=status.HTTP_400_BAD_REQUEST
             )
 
@@ -135,7 +115,6 @@ class UserViewSet(viewsets.ModelViewSet):
                 status=status.HTTP_404_NOT_FOUND
             )
 
-        #Check if assignment already exists
         user_role, created = UserRole.objects.get_or_create(
             user=user,
             role=role,
@@ -143,58 +122,48 @@ class UserViewSet(viewsets.ModelViewSet):
         )
 
         if not created:
-            # Reactivate if not active
             if not user_role.is_active:
                 user_role.is_active = True
                 user_role.save()
                 message = 'Role reactivated'
             else:
-                message = 'Role assigned successfully'
+                message = 'Role already assigned'
+        else:
+            message = 'Role assigned successfully'
 
-            serializer = UserRoleSerializer(user_role)
-            return Response({
-                'message': message,
-                'user_role': serializer.data
-            }, status=status.HTTP_201_CREATED if created else status.HTTP_200_OK)
+        serializer = UserRoleSerializer(user_role)
+        return Response({
+            'message': message,
+            'user_role': serializer.data
+        }, status=status.HTTP_201_CREATED if created else status.HTTP_200_OK)
 
-        @action(detail=True, methods=['delete'], url_path='roles/(?P<role_id>[^/.]+)')
-        def remove_role(self, request, pk=None, role_id=None):
-            """
-            Remove/deactivate a role from a user
-            DELETE /api/users/{id}/roles/{role_id}/
-            """
+    @action(detail=True, methods=['delete'], url_path='roles/(?P<role_id>[^/.]+)', permission_classes=[IsAdmin])
+    def remove_role(self, request, pk=None, role_id=None):
+        """
+        Remove (deactivate) a role from a user.
+        Only ADMIN can remove roles.
+        """
+        user = self.get_object()
 
-            user = self.get_object()
+        try:
+            user_role = UserRole.objects.get(user=user, role_id=role_id)
+        except UserRole.DoesNotExist:
+            return Response(
+                {'error': 'Role assignment not found'},
+                status=status.HTTP_404_NOT_FOUND
+            )
 
-            try:
-                user_role = UserRole.objects.get(user=user, role_id=role_id)
-            except UserRole.DoesNotExist:
-                return Response(
-                    {'error': 'Role assignment not found'},
-                    status=status.HTTP_404_NOT_FOUND
-                )
+        user_role.is_active = False
+        user_role.save()
 
-            #Deactivate instead of delete for audit trail
-            user_role.is_active = False
-            user_role.save()
-
-            return Response({'message': 'Role removed successfully'})
-
+        return Response({'message': 'Role removed successfully'})
 
 
 class RoleViewSet(viewsets.ReadOnlyModelViewSet):
     """
-    ViewSet for Role management
-    Read only
-    -GET /api/roles/
-    -GET /api/roles/{id}/
+    ViewSet for Role management (read-only).
+    All authenticated users can view roles.
     """
-
     queryset = Role.objects.all()
     serializer_class = RoleSerializer
     permission_classes = [permissions.IsAuthenticated]
-
-
-
-
-

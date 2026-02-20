@@ -1,42 +1,34 @@
-"""
-Views for Sales app
-Handles sales, sale items, payments, and sale competition workflow
+""""
+Views for Sales app with role-based permissions.
 """
 
 from rest_framework import viewsets, status, permissions
 from rest_framework.decorators import action
 from rest_framework.response import Response
 from django.db import transaction
-from django.db.models import Q
+from django.db.models import Sum, Q
 from decimal import Decimal
 
 from .models import Sale, SaleItem, Payments
-from .serializers import  (
-    SaleSerializer, SaleListSerializer, SaleCreateSerializer, SaleItemSerializer,
-    SaleItemCreateSerializer, PaymentSerializer, PaymentCreateSerializer
+from .serializers import (
+    SaleSerializer, SaleListSerializer, SaleCreateSerializer,
+    SaleItemSerializer, SaleItemCreateSerializer,
+    PaymentSerializer, PaymentCreateSerializer
 )
 from inventory.models import Product, StockMovement
+from accounts.permissions import CanManageSales, IsAdminOrManager
+
 
 class SaleViewSet(viewsets.ModelViewSet):
     """
-    ViewSet for sale sale management
-
-    -GET /api/sales/
-    -POST /api/sales/ (Create draft)
-    -GET /api/sales/{id}/
-    -POST /api/sales/{id}/items/
-    -DELETE /api/sales/{id}/items/{item_id}/
-    -POST /api/sales/{id}/payments/
-    -POST /api/sales/{id}/complete/
-    -POST /api/sales/{id}/void/
-    -POST /api/sales/{id}/refund/
+    ViewSet for Sale management.
+    CASHIER, MANAGER, ADMIN can create and complete sales.
+    Only MANAGER and ADMIN can void and refund.
     """
-
     queryset = Sale.objects.all()
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [permissions.IsAuthenticated, CanManageSales]
 
     def get_serializer_class(self):
-        """ Use different serializer for different actions."""
         if self.action == 'list':
             return SaleListSerializer
         elif self.action == 'create':
@@ -44,22 +36,16 @@ class SaleViewSet(viewsets.ModelViewSet):
         return SaleSerializer
 
     def get_queryset(self):
-        """
-        Filter sales with optional query parameters
-        """
         queryset = Sale.objects.select_related('warehouse', 'sold_by')
 
-        #Filter by status
         sale_status = self.request.query_params.get('status')
         if sale_status:
             queryset = queryset.filter(status=sale_status)
 
-        #Filter by warehouse
         warehouse_id = self.request.query_params.get('warehouse_id')
         if warehouse_id:
             queryset = queryset.filter(warehouse_id=warehouse_id)
 
-        #Filter by data range
         date_from = self.request.query_params.get('date_from')
         if date_from:
             queryset = queryset.filter(created_at__gte=date_from)
@@ -67,23 +53,20 @@ class SaleViewSet(viewsets.ModelViewSet):
         date_to = self.request.query_params.get('date_to')
         if date_to:
             queryset = queryset.filter(created_at__lte=date_to)
-        return  queryset.order_by('-created_at')
+
+        return queryset.order_by('-created_at')
 
     @transaction.atomic
-    def create(self, request, args, **kwargs):
-        """
-        Create a draft sale.
-        POST /api/sales/
-        """
-
+    def create(self, request, *args, **kwargs):
+        """Create a draft sale."""
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
 
-        #Generate sale number
+        # Generate sale number
         last_sale = Sale.objects.order_by('-created_at').first()
         if last_sale and last_sale.sale_number:
             try:
-                last_number = int(last_sale.sale_number.split('-')[1])
+                last_number = int(last_sale.sale_number.split('-')[-1])
                 sale_number = f"SALE-{last_number + 1:06d}"
             except:
                 sale_number = f"SALE-000001"
@@ -100,10 +83,7 @@ class SaleViewSet(viewsets.ModelViewSet):
 
     @action(detail=True, methods=['post'], url_path='items')
     def add_item(self, request, pk=None):
-        """
-        Add an item to the sale
-        POST /api/sales/{id}/items/
-        """
+        """Add an item to the sale."""
         sale = self.get_object()
 
         if sale.status != 'PENDING':
@@ -113,9 +93,11 @@ class SaleViewSet(viewsets.ModelViewSet):
             )
 
         serializer = SaleItemCreateSerializer(data=request.data)
-        quantity = serializer.validated_data.get('quantity')
+        serializer.is_valid(raise_exception=True)
 
-        #Create sale item with current product price
+        product = serializer.validated_data['product']
+        quantity = serializer.validated_data['quantity']
+
         sale_item = SaleItem.objects.create(
             sale=sale,
             product=product,
@@ -124,7 +106,6 @@ class SaleViewSet(viewsets.ModelViewSet):
             line_total=product.unit_price * quantity
         )
 
-        #Recalculate sale totals
         self._recalculate_sale_totals(sale)
 
         response_serializer = SaleItemSerializer(sale_item)
@@ -132,12 +113,9 @@ class SaleViewSet(viewsets.ModelViewSet):
 
     @action(detail=True, methods=['delete'], url_path='items/(?P<item_id>[^/.]+)')
     def remove_item(self, request, pk=None, item_id=None):
-        """
-        Remove an item from a sale
-        DELETE /api/sales/{id}/items/{item_id}/
-        """
-
+        """Remove an item from the sale."""
         sale = self.get_object()
+
         if sale.status != 'PENDING':
             return Response(
                 {'error': 'Can only remove items from pending sales'},
@@ -148,23 +126,18 @@ class SaleViewSet(viewsets.ModelViewSet):
             sale_item = SaleItem.objects.get(id=item_id, sale=sale)
         except SaleItem.DoesNotExist:
             return Response(
-                {'error': 'sale item not found'},
+                {'error': 'Sale item not found'},
                 status=status.HTTP_404_NOT_FOUND
             )
 
         sale_item.delete()
-
-        #Recalculate sale totals
         self._recalculate_sale_totals(sale)
 
         return Response({'message': 'Item removed successfully'})
 
     @action(detail=True, methods=['post'], url_path='payments')
     def add_payment(self, request, pk=None):
-        """
-        Add a payment to a sale
-        POST /api/sales/{id}/payments/
-        """
+        """Add a payment to the sale."""
         sale = self.get_object()
 
         if sale.status not in ['PENDING', 'COMPLETED']:
@@ -176,8 +149,7 @@ class SaleViewSet(viewsets.ModelViewSet):
         serializer = PaymentCreateSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
 
-        # Create payment
-        payment = Payment.objects.create(
+        payment = Payments.objects.create(
             sale=sale,
             **serializer.validated_data
         )
@@ -188,11 +160,7 @@ class SaleViewSet(viewsets.ModelViewSet):
     @action(detail=True, methods=['post'])
     @transaction.atomic
     def complete(self, request, pk=None):
-        """
-        Complete a sale: validate stock, reduce inventory, create ledger entries.
-
-        POST /api/sales/{id}/complete/
-        """
+        """Complete a sale: validate stock, reduce inventory."""
         sale = self.get_object()
 
         if sale.status != 'PENDING':
@@ -201,14 +169,12 @@ class SaleViewSet(viewsets.ModelViewSet):
                 status=status.HTTP_400_BAD_REQUEST
             )
 
-        # Validate sale has items
         if not sale.items.exists():
             return Response(
                 {'error': 'Sale must have at least one item'},
                 status=status.HTTP_400_BAD_REQUEST
             )
 
-        # Validate payment
         total_paid = sale.payments.aggregate(total=Sum('amount'))['total'] or Decimal('0')
         if total_paid < sale.grand_total:
             return Response(
@@ -219,7 +185,6 @@ class SaleViewSet(viewsets.ModelViewSet):
         # Validate stock availability
         for item in sale.items.select_related('product'):
             if item.product.track_stock:
-                # Calculate current stock
                 current_stock = StockMovement.objects.filter(
                     product=item.product,
                     warehouse=sale.warehouse
@@ -227,8 +192,7 @@ class SaleViewSet(viewsets.ModelViewSet):
 
                 if current_stock < item.quantity:
                     return Response(
-                        {
-                            'error': f'Insufficient stock for {item.product.sku}. Available: {current_stock}, Required: {item.quantity}'},
+                        {'error': f'Insufficient stock for {item.product.sku}. Available: {current_stock}, Required: {item.quantity}'},
                         status=status.HTTP_400_BAD_REQUEST
                     )
 
@@ -239,17 +203,14 @@ class SaleViewSet(viewsets.ModelViewSet):
                     product=item.product,
                     warehouse=sale.warehouse,
                     movement_type='SALE',
-                    quantity=-item.quantity,  # Negative for reduction
+                    quantity=-item.quantity,
                     reference_type='SALE',
                     reference_id=sale.id,
                     created_by=request.user
                 )
 
-        # Update sale status
         sale.status = 'COMPLETED'
         sale.save()
-
-        # TODO: Create ledger entries (will be implemented in finance service)
 
         serializer = SaleSerializer(sale)
         return Response({
@@ -257,14 +218,10 @@ class SaleViewSet(viewsets.ModelViewSet):
             'sale': serializer.data
         })
 
-    @action(detail=True, methods=['post'])
+    @action(detail=True, methods=['post'], permission_classes=[permissions.IsAuthenticated, IsAdminOrManager])
     @transaction.atomic
     def void(self, request, pk=None):
-        """
-        Void a pending sale.
-
-        POST /api/sales/{id}/void/
-        """
+        """Void a pending sale. Only MANAGER/ADMIN can void."""
         sale = self.get_object()
 
         if sale.status != 'PENDING':
@@ -278,14 +235,10 @@ class SaleViewSet(viewsets.ModelViewSet):
 
         return Response({'message': 'Sale voided successfully'})
 
-    @action(detail=True, methods=['post'])
+    @action(detail=True, methods=['post'], permission_classes=[permissions.IsAuthenticated, IsAdminOrManager])
     @transaction.atomic
     def refund(self, request, pk=None):
-        """
-        Refund a completed sale: restore stock, create reversing ledger entries.
-
-        POST /api/sales/{id}/refund/
-        """
+        """Refund a completed sale. Only MANAGER/ADMIN can refund."""
         sale = self.get_object()
 
         if sale.status != 'COMPLETED':
@@ -301,26 +254,22 @@ class SaleViewSet(viewsets.ModelViewSet):
                     product=item.product,
                     warehouse=sale.warehouse,
                     movement_type='REFUND',
-                    quantity=item.quantity,  # Positive to restore stock
+                    quantity=item.quantity,
                     reference_type='SALE',
                     reference_id=sale.id,
                     created_by=request.user
                 )
 
-        # Update sale status
         sale.status = 'REFUNDED'
         sale.save()
-
-        # TODO: Create reversing ledger entries
 
         return Response({'message': 'Sale refunded successfully'})
 
     def _recalculate_sale_totals(self, sale):
         """Helper method to recalculate sale totals from items."""
         subtotal = sale.items.aggregate(total=Sum('line_total'))['total'] or Decimal('0')
-
         sale.subtotal = subtotal
-        sale.discount_total = Decimal('0')  # TODO: Implement discount logic
-        sale.tax_total = Decimal('0')  # TODO: Implement tax logic
+        sale.discount_total = Decimal('0')
+        sale.tax_total = Decimal('0')
         sale.grand_total = subtotal - sale.discount_total + sale.tax_total
         sale.save()
