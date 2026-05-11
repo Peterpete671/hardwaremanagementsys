@@ -2,4 +2,10 @@ from django.apps import AppConfig
 
 
 class FinanceConfig(AppConfig):
+    default_auto_field = 'django.db.models.BigAutoField'
     name = 'finance'
+
+    def ready(self):
+        """Import signals when app is ready."""
+        #Import audit signals to ensure they're registered
+        import audit.signals

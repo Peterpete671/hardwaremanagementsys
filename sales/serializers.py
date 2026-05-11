@@ -29,11 +29,11 @@ class SaleItemCreateSerializer(serializers.ModelSerializer):
         model = SaleItem
         fields = ['product', 'quantity']
 
-        def validate_quantity(self, value):
-            """Ensure quantity is positive"""
-            if value <=0:
-                raise serializers.ValidationError("Qty must be greater than 0")
-            return value
+    def validate_quantity(self, value):
+        """Ensure quantity is positive"""
+        if value <= 0:
+            raise serializers.ValidationError("Qty must be greater than 0")
+        return value
 
 
 class PaymentSerializer(serializers.ModelSerializer):
@@ -65,8 +65,8 @@ class SaleSerializer(serializers.ModelSerializer):
     """
     Detailed serializer for sale model with nested items and payments.
     """
-    warehouse_name = serializers.CharField(source='warehouse.name', read_only =True)
-    sold_by_username = serializers.CharField(source='sold_by_username', read_only=True)
+    warehouse_name = serializers.CharField(source='warehouse.name', read_only=True)
+    sold_by_username = serializers.CharField(source='sold_by.username', read_only=True)
     items = SaleItemSerializer(many=True, read_only=True)
     payments = PaymentSerializer(many=True, read_only=True)
     total_paid = serializers.SerializerMethodField()
@@ -111,7 +111,7 @@ class SaleCreateSerializer(serializers.ModelSerializer):
     """
     class Meta:
         model = Sale
-        fields = ['warehouse', 'sold_by']
+        fields = ['warehouse']
 
 
 

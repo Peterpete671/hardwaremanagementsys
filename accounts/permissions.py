@@ -81,14 +81,14 @@ class CanManageUsers(permissions.BasePermission):
     """
     def has_permission(self, request, view):
         if not request.user or not request.user.is_authenticated:
-             return False
+            return False
 
         if request.method in permissions.SAFE_METHODS:
-              return True
+            return True
 
-         #Write operations for ADMIN only
+        # Write operations for ADMIN only
         if request.user.is_superuser:
-             return True
+            return True
 
         return request.user.user_roles.filter(
             role__name='ADMIN',
@@ -163,7 +163,7 @@ class CanManageSales(permissions.BasePermission):
             return True
 
         return request.user.user_roles.filter(
-            role_name__in=['CASHIER', 'MANAGER', 'ADMIN'],
+            role__name__in=['CASHIER', 'MANAGER', 'ADMIN'],
             is_active=True
         ).exists()
 

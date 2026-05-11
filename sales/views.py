@@ -75,7 +75,8 @@ class SaleViewSet(viewsets.ModelViewSet):
 
         sale = serializer.save(
             sale_number=sale_number,
-            status='PENDING'
+            status='PENDING',
+            sold_by=request.user
         )
 
         response_serializer = SaleSerializer(sale)
