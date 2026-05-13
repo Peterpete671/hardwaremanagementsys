@@ -80,7 +80,7 @@ class UserManagementTestCase(TestCase):
         response = self.client.get(url)
 
         self.assertEqual(response.status_code, status.HTTP_200_OK)
-        self.assertEqual(len(response.data['results']), 2)
+        self.assertEqual(len(response.data), 2)
 
     def test_retrieve_user_with_roles(self):
         """Test retrieving user with roles"""
@@ -91,7 +91,7 @@ class UserManagementTestCase(TestCase):
 
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertIn('roles', response.data)
-        self.assertEqual(len(response.data['roles']),)
+        self.assertEqual(len(response.data['roles']), 1)
         self.assertEqual(response.data['roles'][0]['name'], 'ADMIN')
 
     def test_assign_role_to_user(self):

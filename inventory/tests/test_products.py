@@ -26,18 +26,21 @@ class ProductManagementTestCase(TestCase):
         #Create users
         self.admin_user = User.objects.create_user(
             username='admin',
-            password='admin123'
+            password='admin123',
+            email='admin@example.com'
         )
         UserRole.objects.create(user=self.admin_user, role=self.admin_role, is_active=True)
 
         self.storekeeper = User.objects.create_user(
             username='storekeeper',
-            password='store123'
+            password='store123',
+            email='storekeeper@example.com'
         )
         UserRole.objects.create(user=self.storekeeper, role=self.storekeeper_role, is_active=True)
 
         self.cashier = User.objects.create_user(
-            username='cashier', password='cashier123'
+            username='cashier', password='cashier123',
+            email='cashier@example.com'
         )
 
         UserRole.objects.create(user=self.cashier, role=self.cashier_role, is_active=True)
@@ -95,22 +98,22 @@ class ProductManagementTestCase(TestCase):
         self.client.force_authenticate(user=self.cashier)
 
         #Create products
-        Product.object.create(
+        Product.objects.create(
             sku='PROD001',
             name='Product 1',
-            category = self.category,
+            category=self.category,
             unit_cost=10,
             unit_price=20,
             is_active=True
         )
 
-        Product.oject.create(
-            sku ='PROD002',
-            name = 'Product 2',
-            category = self.category,
-            unit_cost = 15,
+        Product.objects.create(
+            sku='PROD002',
+            name='Product 2',
+            category=self.category,
+            unit_cost=15,
             unit_price=30,
-            is_active = False
+            is_active=False
         )
 
         #List all products
@@ -125,6 +128,6 @@ class ProductManagementTestCase(TestCase):
         self.assertEqual(len(response.data['results']), 1)
 
         #Search by SKU
-        url = ('product-list') + '?search=PROD001'
+        url = reverse('product-list') + '?search=PROD001'
         response = self.client.get(url)
         self.assertEqual(len(response.data['results']), 1)

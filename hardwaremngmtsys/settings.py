@@ -11,9 +11,12 @@ https://docs.djangoproject.com/en/6.0/ref/settings/
 """
 
 from pathlib import Path
+import sys
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
+
+TESTING = len(sys.argv) > 1 and sys.argv[1] == 'test'
 
 
 # Quick-start development settings - unsuitable for production
@@ -92,6 +95,12 @@ DATABASES = {
         'PORT': '5432',
     }
 }
+
+if TESTING:
+    DATABASES['default'] = {
+        'ENGINE': 'django.db.backends.sqlite3',
+        'NAME': BASE_DIR / 'test_db.sqlite3',
+    }
 
 
 # Password validation
