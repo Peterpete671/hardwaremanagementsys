@@ -62,7 +62,7 @@ class Sale(models.Model):
     )
 
     subtotal = models.DecimalField(
-        max_digits=5,
+        max_digits=15,
         decimal_places=2,
         default=0
     )

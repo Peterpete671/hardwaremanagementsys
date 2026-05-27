@@ -109,9 +109,12 @@ class SaleCreateSerializer(serializers.ModelSerializer):
     """
     Serializer for creating draft sales
     """
+    sold_by = serializers.PrimaryKeyRelatedField(read_only=True)
+
     class Meta:
         model = Sale
-        fields = ['warehouse']
+        fields = ['warehouse', 'sold_by']
+        read_only_fields = ['sold_by']
 
 
 

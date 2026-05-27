@@ -53,7 +53,7 @@ class Migration(migrations.Migration):
                 ('unit_price', models.DecimalField(decimal_places=2, help_text='Selling price per unit', max_digits=15)),
                 ('track_stock', models.BooleanField(default=True, help_text='False for services or non-tracked items')),
                 ('is_active', models.BooleanField(default=True)),
-                ('created_at', models.BooleanField(default=True)),
+                ('created_at', models.DateTimeField(auto_now_add=True, db_index=True)),
                 ('category', models.ForeignKey(on_delete=django.db.models.deletion.PROTECT, related_name='products', to='inventory.category')),
             ],
             options={

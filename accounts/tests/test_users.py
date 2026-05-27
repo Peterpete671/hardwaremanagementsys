@@ -86,7 +86,7 @@ class UserManagementTestCase(TestCase):
         """Test retrieving user with roles"""
         self.client.force_authenticate(user=self.admin_user)
 
-        url = reverse('user_detail', kwargs={'pk': self.admin_user.pk})
+        url = reverse('user-detail', kwargs={'pk': self.admin_user.pk})
         response = self.client.get(url)
 
         self.assertEqual(response.status_code, status.HTTP_200_OK)

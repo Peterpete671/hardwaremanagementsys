@@ -1,0 +1,96 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>{% block title %} Hardware Management System{% endblock %}</title>
+
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+
+    <!-- Font Awesome for icons -->
+    <link
+      rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css"
+    />
+
+    {% block extra_css %} {% endblock %}
+  </head>
+  <body class="bg-gray-100">
+    {% if user.is_authenticated %}
+    <!-- Navigation -->
+    <nav class="bg-blue-600 text-white shadow-lg">
+      <div class="container mx-auto px-4">
+        <div class="flex items-center justify-between h-16">
+          <div class="flex items-center space-x-8">
+            <a href="{% url 'dashboard' %}" class="text-xl font-bold">
+              <i class="fas fa-tools mr-2"></i>Hardware POS
+            </a>
+            <div class="hidden md:flex space-x-4">
+              <a
+                href="{% url 'dashboard' %}"
+                class="hover:bg-blue-700 px-3 py-2 rounded"
+              >
+                <i class="fas fa-dashboard mr-1"></i>Dashboard
+              </a>
+              <a
+                href="{% url 'product_list' %}"
+                class="hover:bg-blue-700 px-3 py-2 rounded"
+              >
+                <i class="fas fa-box mr-1"></i>Products
+              </a>
+              <a
+                href="{% url 'sales_list' %}"
+                class="hover:bg-blue-700 px-3 py-2 rounded"
+              >
+                <i class="fas fa-shopping-cart mr-1"></i>Sales
+              </a>
+              <a
+                href="{% url 'new_sale' %}"
+                class="hover:bg-blue-700 px-3 py-2 rounded"
+              >
+                <i class="fas fa-cash-register"></i>New Sale
+              </a>
+              <a
+                href="{% url 'reports' %}"
+                class="hover:bg-blue-700 px-3 py-2 rounded"
+              >
+                <i class="fas fa-chart-bar mr-1"></i>Reports
+              </a>
+            </div>
+          </div>
+          <div class="flex items-center space-x-4">
+            <span class="text-sm">{{ user.username }}</span>
+            <a
+              href="{% url 'logout' %}"
+              class="hover:bg-blue-700 px-3 py-2 rounded"
+            >
+              <i class="fas fa-sign-out-alt"></i> Logout
+            </a>
+          </div>
+        </div>
+      </div>
+    </nav>
+    {% endif %}
+
+    <!-- Messages -->
+    {% if messages %}
+    <div class="container mx-auto px-4 mt-4">
+      {% for message in messages %}
+      <div
+        class="bg-{{ message.tags }}-100 border border-{{ message.tags }}-400 text-{{ message.tags }}-700 px-4 py-3 rounded relative mb-2"
+      >
+        {{ message }}
+      </div>
+      {% endfor %}
+    </div>
+    {% endif %}
+
+    <!-- Content -->
+    <main class="container mx-auto px-4 py-8">
+      {% block content %}{% endblock %}
+    </main>
+
+    {% block extra_js %}{% endblock %}
+  </body>
+</html>

@@ -120,14 +120,14 @@ class ProductManagementTestCase(TestCase):
         url = reverse('product-list')
         response = self.client.get(url)
         self.assertEqual(response.status_code, status.HTTP_200_OK)
-        self.assertEqual(len(response.data['results']), 2)
+        self.assertEqual(len(response.data), 2)
 
         #Filter by active
         url = reverse('product-list') + '?is_active=true'
         response = self.client.get(url)
-        self.assertEqual(len(response.data['results']), 1)
+        self.assertEqual(len(response.data), 1)
 
         #Search by SKU
         url = reverse('product-list') + '?search=PROD001'
         response = self.client.get(url)
-        self.assertEqual(len(response.data['results']), 1)
+        self.assertEqual(len(response.data), 1)

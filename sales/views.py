@@ -16,6 +16,7 @@ from .serializers import (
     PaymentSerializer, PaymentCreateSerializer
 )
 from inventory.models import Product, StockMovement
+from finance.models import Account, LedgerEntry
 from accounts.permissions import CanManageSales, IsAdminOrManager
 
 
@@ -209,6 +210,41 @@ class SaleViewSet(viewsets.ModelViewSet):
                     reference_id=sale.id,
                     created_by=request.user
                 )
+
+        # Create ledger entries for the completed sale
+        cogs_amount = sum(
+            item.quantity * item.product.unit_cost
+            for item in sale.items.select_related('product')
+        )
+        cash_account = Account.objects.get(name='Cash')
+        revenue_account = Account.objects.get(name='Revenue')
+        inventory_account = Account.objects.get(name='Inventory')
+        cogs_account = Account.objects.get(name='Cost of Goods Sold')
+
+        LedgerEntry.objects.create(
+            account=cash_account,
+            amount=total_paid,
+            reference_type='SALE',
+            reference_id=sale.id
+        )
+        LedgerEntry.objects.create(
+            account=revenue_account,
+            amount=sale.grand_total,
+            reference_type='SALE',
+            reference_id=sale.id
+        )
+        LedgerEntry.objects.create(
+            account=inventory_account,
+            amount=-cogs_amount,
+            reference_type='SALE',
+            reference_id=sale.id
+        )
+        LedgerEntry.objects.create(
+            account=cogs_account,
+            amount=cogs_amount,
+            reference_type='SALE',
+            reference_id=sale.id
+        )
 
         sale.status = 'COMPLETED'
         sale.save()

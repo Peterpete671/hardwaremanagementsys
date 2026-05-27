@@ -113,7 +113,8 @@ class SalesWorkflowTestCase(TestCase):
         response = self.client.post(url)
 
         self.assertEqual(response.status_code, status.HTTP_200_OK)
-        self.assertIn('status', response.data)
+        self.assertIn('sale', response.data)
+        self.assertEqual(response.data['sale']['status'], 'COMPLETED')
 
         #Verify stock was reduced
         stock = StockMovement.objects.filter(

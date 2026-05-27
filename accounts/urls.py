@@ -13,6 +13,6 @@ router.register(r'roles', RoleViewSet, basename='role')
 
 urlpatterns = [
     path('auth/login/', AuthViewSet.as_view({'post': 'login'}), name='auth-login'),
-    path('auth/logout/', AuthViewSet.as_view({'post': 'logout'}), name='auth_logout'),
+    path('auth/logout/', AuthViewSet.as_view({'post': 'logout'}), name='auth-logout'),
     path('', include(router.urls)),
 ]
