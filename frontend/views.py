@@ -1,4 +1,4 @@
-from django.shortcuts import render, redirect
+from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth import authenticate, login, logout
 from django.contrib import messages
@@ -258,3 +258,193 @@ def reports(request):
         'top_products': top_products,
     }
     return render(request, 'frontend/reports.html', context)
+
+# ============================================================
+# User Management Views
+# ============================================================
+
+def _is_admin(user):
+    """Helper: returns True if user is superuser or has active ADMIN role."""
+    return user.is_superuser or user.user_roles.filter(
+        role__name='ADMIN', is_active=True
+    ).exists()
+
+
+@login_required
+def users_list(request):
+    """List all users (admin only)."""
+    if not _is_admin(request.user):
+        messages.error(request, 'You do not have permission to manage users')
+        return redirect('dashboard')
+
+    search = request.GET.get('search', '')
+    users = User.objects.all().prefetch_related('user_roles__role')
+
+    if search:
+        users = users.filter(
+            Q(username__icontains=search) | Q(email__icontains=search)
+        )
+
+    roles = Role.objects.all()
+    context = {'users': users, 'roles': roles, 'search': search}
+    return render(request, 'frontend/users_list.html', context)
+
+
+@login_required
+def user_detail(request, user_id):
+    """View and manage a specific user."""
+    if not _is_admin(request.user):
+        messages.error(request, 'You do not have permission to manage users')
+        return redirect('dashboard')
+
+    target_user = get_object_or_404(User, id=user_id)
+    user_roles = target_user.user_roles.select_related('role').all()
+    # IDs of roles already actively assigned, for excluding from the add dropdown
+    active_role_ids = user_roles.filter(is_active=True).values_list('role_id', flat=True)
+    available_roles = Role.objects.exclude(id__in=active_role_ids)
+
+    context = {
+        'target_user': target_user,
+        'user_roles': user_roles,
+        'available_roles': available_roles,
+    }
+    return render(request, 'frontend/user_detail.html', context)
+
+
+@login_required
+def create_user(request):
+    """Create a new user (admin only)."""
+    if not _is_admin(request.user):
+        messages.error(request, 'You do not have permission to create users')
+        return redirect('dashboard')
+
+    roles = Role.objects.all()
+
+    if request.method == 'POST':
+        username = request.POST.get('username', '').strip()
+        email = request.POST.get('email', '').strip()
+        password = request.POST.get('password', '')
+        password_confirm = request.POST.get('password_confirm', '')
+        role_id = request.POST.get('role')
+
+        errors = []
+        if not username:
+            errors.append('Username is required')
+        elif User.objects.filter(username=username).exists():
+            errors.append('Username already exists')
+
+        if not email:
+            errors.append('Email is required')
+        elif User.objects.filter(email=email).exists():
+            errors.append('Email already exists')
+
+        if not password:
+            errors.append('Password is required')
+        elif len(password) < 6:
+            errors.append('Password must be at least 6 characters')
+
+        if password != password_confirm:
+            errors.append('Passwords do not match')
+
+        if not role_id:
+            errors.append('Role is required')
+
+        if errors:
+            context = {'errors': errors, 'username': username, 'email': email, 'roles': roles}
+            return render(request, 'frontend/create_user.html', context)
+
+        try:
+            user = User.objects.create_user(username=username, email=email, password=password)
+            role = Role.objects.get(id=role_id)
+            UserRole.objects.create(user=user, role=role, is_active=True)
+            messages.success(request, f'User {username} created successfully with role {role.name}')
+            return redirect('users_list')
+        except Exception as e:
+            messages.error(request, f'Error creating user: {str(e)}')
+            context = {'username': username, 'email': email, 'roles': roles}
+            return render(request, 'frontend/create_user.html', context)
+
+    return render(request, 'frontend/create_user.html', {'roles': roles})
+
+
+@login_required
+def assign_role(request, user_id):
+    """Assign a role to a user (admin only)."""
+    if not _is_admin(request.user):
+        messages.error(request, 'Permission denied')
+        return redirect('dashboard')
+
+    if request.method == 'POST':
+        target_user = get_object_or_404(User, id=user_id)
+        role_id = request.POST.get('role_id')
+        try:
+            role = Role.objects.get(id=role_id)
+            user_role, created = UserRole.objects.get_or_create(
+                user=target_user, role=role, defaults={'is_active': True}
+            )
+            if not created:
+                user_role.is_active = True
+                user_role.save()
+                messages.info(request, f'Role {role.name} reactivated for {target_user.username}')
+            else:
+                messages.success(request, f'Role {role.name} assigned to {target_user.username}')
+        except Role.DoesNotExist:
+            messages.error(request, 'Role not found')
+
+    return redirect('user_detail', user_id=user_id)
+
+
+@login_required
+def remove_role(request, user_id, role_id):
+    """Deactivate a role assignment from a user (admin only)."""
+    if not _is_admin(request.user):
+        messages.error(request, 'Permission denied')
+        return redirect('dashboard')
+
+    if request.method == 'POST':
+        target_user = get_object_or_404(User, id=user_id)
+        try:
+            user_role = UserRole.objects.get(user=target_user, role_id=role_id)
+            role_name = user_role.role.name
+            user_role.is_active = False
+            user_role.save()
+            messages.success(request, f'Role {role_name} removed from {target_user.username}')
+        except UserRole.DoesNotExist:
+            messages.error(request, 'Role assignment not found')
+
+    return redirect('user_detail', user_id=user_id)
+
+
+@login_required
+def toggle_user_status(request, user_id):
+    """Toggle user active/inactive status (admin only)."""
+    if not _is_admin(request.user):
+        messages.error(request, 'Permission denied')
+        return redirect('dashboard')
+
+    if request.method == 'POST':
+        target_user = get_object_or_404(User, id=user_id)
+        if target_user.id == request.user.id:
+            messages.error(request, 'You cannot deactivate your own account')
+            return redirect('user_detail', user_id=user_id)
+
+        target_user.is_active = not target_user.is_active
+        target_user.save()
+        status_word = 'activated' if target_user.is_active else 'deactivated'
+        messages.success(request, f'User {target_user.username} has been {status_word}')
+
+    return redirect('user_detail', user_id=user_id)
+
+
+@login_required
+def roles_list(request):
+    """List all roles with active user counts (admin only)."""
+    if not _is_admin(request.user):
+        messages.error(request, 'You do not have permission to manage roles')
+        return redirect('dashboard')
+
+    roles = Role.objects.all().annotate(
+        user_count=Count('user_assignments', filter=Q(user_assignments__is_active=True))
+    )
+    context = {'roles': roles}
+    return render(request, 'frontend/roles_list.html', context)

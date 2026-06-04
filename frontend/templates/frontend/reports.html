@@ -1,100 +1,73 @@
-{% extends 'frontend/base.html' %} {% block title %}Reports{% endblock %}
-{%block content%}
+{% extends 'frontend/base.html' %}
+{% block title %}Reports{% endblock %}
+
+{% block content %}
 <h1 class="text-3xl font-bold text-gray-800 mb-6">Financial Reports</h1>
-
-<!-- Date Filter -->
 <div class="bg-white p-4 rounded-lg shadow mb-6">
-  <form method="GET" class="flex gap-4">
-    <input
-      type="date"
-      name="date_from"
-      value="{{ date_from }}"
-      class="px-4 py-2 border rounded-lg"
-    />
-    <input
-      type="date"
-      name="date_to"
-      value="{{ date_to }}"
-      class="px-4 py-2 border rounded-lg"
-    />
-    <button
-      type="submit"
-      class="bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700"
-    >
-      <i class="fas fa-filter mr-2"></i>Apply
-    </button>
-  </form>
+    <form method="GET" class="flex gap-4">
+        <input type="date" name="date_from" value="{{ date_from }}" class="px-4 py-2 border rounded-lg" />
+        <input type="date" name="date_to" value="{{ date_to }}" class="px-4 py-2 border rounded-lg" />
+        <button type="submit" class="bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700">
+            <i class="fas fa-filter mr-2"></i>Apply
+        </button>
+    </form>
 </div>
-
-<!-- Metrics -->
 <div class="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
-  <div class="bg-white p-6 rounded-lg shadow">
-    <p class="text-gray-500 text-sm mb-2">Revenue</p>
-    <p class="text-3xl font-bold text-green-600">
-      KES {{ revenue|floatformat:2 }}
-    </p>
-  </div>
-  <div class="bg-white p-6 rounded-lg shadow">
-    <p class="text-gray-500 text-sm mb-2">Cost of Goods Sold</p>
-    <p class="text-3xl font-bold text-red-600">KES {{ cogs|floatformat:2 }}</p>
-  </div>
-  <div class="bg-white p-6 rounded-lg shadow">
-    <p class="text-gray-500 text-sm mb-2">Gross Profit</p>
-    <p class="text-3xl font-bold text-blue-600">
-      KES {{ profit|floatformat:2 }}
-    </p>
-  </div>
-  <div class="bg-white p-6 rounded-lg shadow">
-    <p class="text-gray-500 text-sm mb-2">Profit Margin</p>
-    <p class="text-3xl font-bold text-red-600">{{ margin|floatformat:2 }}%</p>
-  </div>
+    <div class="bg-white p-6 rounded-lg shadow">
+        <p class="text-gray-500 text-sm mb-2">Revenue</p>
+        <p class="text-3xl font-bold text-green-600">KES {{ revenue|floatformat:2 }}</p>
+    </div>
+    <div class="bg-white p-6 rounded-lg shadow">
+        <p class="text-gray-500 text-sm mb-2">Cost of Goods Sold</p>
+        <p class="text-3xl font-bold text-red-600">KES {{ cogs|floatformat:2 }}</p>
+    </div>
+    <div class="bg-white p-6 rounded-lg shadow">
+        <p class="text-gray-500 text-sm mb-2">Gross Profit</p>
+        <p class="text-3xl font-bold text-blue-600">KES {{ profit|floatformat:2 }}</p>
+    </div>
+    <div class="bg-white p-6 rounded-lg shadow">
+        <p class="text-gray-500 text-sm mb-2">Profit Margin</p>
+        <p class="text-3xl font-bold text-red-600">{{ margin|floatformat:2 }}%</p>
+    </div>
 </div>
-
-<!--Sales summary-->
 <div class="bg-white p-6 rounded-lg shadow mb-6">
-  <h2 class="text-xl font-bold text-gray-800 mb-4">Sales Summary</h2>
-  <div class="grid grid-cols-2 gap-4">
-    <div>
-      <p class="text-gray-600">Total Sales</p>
-      <p class="text-2xl font-bold">{{ sales_count }}</p>
+    <h2 class="text-xl font-bold text-gray-800 mb-4">Sales Summary</h2>
+    <div class="grid grid-cols-2 gap-4">
+        <div>
+            <p class="text-gray-600">Total Sales</p>
+            <p class="text-2xl font-bold">{{ sales_count }}</p>
+        </div>
+        <div>
+            <p class="text-gray-600">Average Sale Value</p>
+            <p class="text-2xl font-bold">KES {{ average_sale|floatformat:2 }}</p>
+        </div>
     </div>
-    <div>
-      <p class="text-gray-600">Average Sale Value</p>
-      <p class="text-2xl font-bold">KES {{ average_sale|floatformat:2 }}</p>
-    </div>
-  </div>
 </div>
-
-<!-- Top Products -->
 <div class="bg-white p-6 rounded-lg shadow">
-  <h2 class="text-xl font-bold text-gray-800 mb-4">Top Selling Products</h2>
-  <div class="overflow-x-auto">
-    <table class="w-full">
-      <thead class="border-b">
-        <tr>
-          <th class="text-left py-2">Product</th>
-          <th class="text-right py-2">Quantity</th>
-          <th class="text-right py-2">Revenue</th>
-        </tr>
-      </thead>
-      <tbody>
-        {% for product in top_products %}
-        <tr class="border-b">
-          <td class="py-3">{{ product.product__name }}</td>
-          <td class="text-right py-3">{{ product.total_quantity }}</td>
-          <td class="text-right py-3 font-semibold">
-            KES {{ product.total_revenue|floatformat:2 }}
-          </td>
-        </tr>
-        {% empty %}
-        <tr>
-          <td colspan="3" class="text-center py-4 text-gray-500">
-            No sales data
-          </td>
-        </tr>
-        {% endfor %}
-      </tbody>
-    </table>
-  </div>
+    <h2 class="text-xl font-bold text-gray-800 mb-4">Top Selling Products</h2>
+    <div class="overflow-x-auto">
+        <table class="w-full">
+            <thead class="border-b">
+                <tr>
+                    <th class="text-left py-2">Product</th>
+                    <th class="text-right py-2">Quantity</th>
+                    <th class="text-right py-2">Revenue</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for product in top_products %}
+                <tr class="border-b">
+                    <td class="py-3">{{ product.product__name }}</td>
+                    <td class="text-right py-3">{{ product.total_quantity }}</td>
+                    <td class="text-right py-3 font-semibold">KES {{ product.total_revenue|floatformat:2 }}</td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="3" class="text-center py-4 text-gray-500">No sales data</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
 </div>
 {% endblock %}

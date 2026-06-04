@@ -1,120 +1,125 @@
-{% extends 'frontend/base.html' %} {% block title %}Dashboard{% endblock %}
-{%block content%}
-<h1 class="text-3xl font-bold text-gray-800 mb-6">Dashboard</h1>
+{% extends 'frontend/base.html' %}
+{% block title %}Dashboard{% endblock %}
 
-<!-- Metrics Cards-->
-<div class="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
-  <div class="bg-white p-6 rounded-lg shadow">
-    <div class="flex items-center justify-between">
-      <div>
-        <p class="text-gray-500 text-sm">Total Sales</p>
-        <p class="text-3xl font-bold text-gray-800">{{ total_sales }}</p>
-      </div>
-      <i class="fas fa-shopping-cart text-4xl text-blue-500"></i>
-    </div>
-  </div>
-
-  <div class="bg-white p-6 rounded-lg shadow">
-    <div class="flex items-center justify-between">
-      <div>
-        <p class="text-gray-500 text-sm">Today's Sales</p>
-        <p class="text-3xl font-bold text-gray-800">{{ today_sales }}</p>
-      </div>
-      <i class="fas fa-calendar-day text-4xl text-green-500"></i>
-    </div>
-  </div>
-
-  <div class="bg-white p-6 rounded-lg shadow">
-    <div class="flex items-center justify-between">
-      <div>
-        <p class="text-gray-500 text-sm">Week Revenue</p>
-        <p class="text-3xl font-bold text-gray-800">
-          KES {{ week_revenue|floatformat:2 }}
-        </p>
-      </div>
-      <i class="fas fa-money-bill-wave text-4xl text-yellow-500"></i>
-    </div>
-  </div>
-
-  <div class="bg-white p-6 rounded-lg shadow">
-    <div class="flex items-center justify-between">
-      <div>
-        <p class="text-gray-500 text-sm">Low Stock Items</p>
-        <p class="text-3xl font-bold text-gray-800">{{ low_stock|length }}</p>
-      </div>
-      <i class="fas fa-exclamation-triangle text-4xl text-red-500"></i>
-    </div>
-  </div>
+{% block content %}
+<div class="flex items-center justify-between mb-6">
+    <h1 class="text-3xl font-bold text-gray-800">Dashboard</h1>
+    <a href="{% url 'new_sale' %}" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg shadow">
+        <i class="fas fa-plus mr-2"></i>New Sale
+    </a>
 </div>
 
-<div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
-  <!-- Recent Sales -->
-  <div class="bg-white p-6 rounded-lg shadow">
-    <h2 class="text-xl font-bold text-gray-800 mb-4">Recent Sales</h2>
-    <div class="overflow-x-auto">
-      <table class="w-full">
-        <thead>
-          <tr class="border-b">
-            <th class="text-left py-2">Sale</th>
-            <th class="text-left py-2">Date</th>
-            <th class="text-left py-2">Total</th>
-            <th class="text-left py-2">Status</th>
-          </tr>
-        </thead>
-        <tbody>
-          {% for sale in recent_sales %}
-          <tr class="border-b hover:bg-gray-50">
-            <td class="py-2">
-              <a
-                href="{% url 'sale_detail' sale.id %}"
-                class="text-blue-600 hover:underline"
-              >
-                {{ sale.sale_number }}
-              </a>
-            </td>
-            <td class="py-2">{{ sale.created_at|date:"M d, Y" }}</td>
-            <td class="py-2">KES {{ sale.grand_total }}</td>
-            <td class="py-2">
-              <span
-                class="px-2 py-1 rounded text-xs {% if sale.status == 'COMPLETED' %}bg-green-100 text-green-800 {% elif sale.status == 'PENDING' %}bg-yellow-100 text-yellow-800 {% else %}bg-red-100 text-red-800{% endif %}"
-              >
-                {{ sale.status }}
-              </span>
-            </td>
-          </tr>
-          {% empty %}
-          <tr>
-            <td colspan="4" class="text-center py-4 text-gray-500">
-              No recent sales
-            </td>
-          </tr>
-          {% endfor %}
-        </tbody>
-      </table>
+<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+    <div class="bg-white p-6 rounded-xl shadow-md">
+        <div class="flex items-center justify-between">
+            <div>
+                <p class="text-gray-500 text-sm">Total Sales</p>
+                <h2 class="text-3xl font-bold text-gray-800 mt-2">{{ total_sales }}</h2>
+            </div>
+            <div class="bg-blue-100 p-4 rounded-full">
+                <i class="fas fa-shopping-cart text-blue-600 text-2xl"></i>
+            </div>
+        </div>
     </div>
-  </div>
+    <div class="bg-white p-6 rounded-xl shadow-md">
+        <div class="flex items-center justify-between">
+            <div>
+                <p class="text-gray-500 text-sm">Products</p>
+                <h2 class="text-3xl font-bold text-gray-800 mt-2">{{ total_products }}</h2>
+            </div>
+            <div class="bg-green-100 p-4 rounded-full">
+                <i class="fas fa-box text-green-600 text-2xl"></i>
+            </div>
+        </div>
+    </div>
+    <div class="bg-white p-6 rounded-xl shadow-md">
+        <div class="flex items-center justify-between">
+            <div>
+                <p class="text-gray-500 text-sm">Users</p>
+                <h2 class="text-3xl font-bold text-gray-800 mt-2">{{ total_users }}</h2>
+            </div>
+            <div class="bg-yellow-100 p-4 rounded-full">
+                <i class="fas fa-users text-yellow-600 text-2xl"></i>
+            </div>
+        </div>
+    </div>
+    <div class="bg-white p-6 rounded-xl shadow-md">
+        <div class="flex items-center justify-between">
+            <div>
+                <p class="text-gray-500 text-sm">Revenue</p>
+                <h2 class="text-3xl font-bold text-gray-800 mt-2">KES {{ revenue }}</h2>
+            </div>
+            <div class="bg-red-100 p-4 rounded-full">
+                <i class="fas fa-money-bill-wave text-red-600 text-2xl"></i>
+            </div>
+        </div>
+    </div>
+</div>
 
-  <!-- Low stock alert-->
-  <div class="bg-white p-6 rounded-lg shadow">
-    <h2 class="text-xl font-bold text-gray-800 mb-4">Low Stock Alert</h2>
-    <div class="space-y-3">
-      {% for item in low_stock %}
-      <div class="flex items-center justify-between p-3 bg-red-50 rounded">
-        <div>
-          <p class="font-semibold text-gray-800">{{ item.product.name }}</p>
-          <p class="text-sm text-gray-600">SKU: {{ item.product.sku }}</p>
-        </div>
-        <div class="text-right">
-          <p class="text-2xl font-bold text-red-600">{{ item.stock }}</p>
-          <p class="text-xs text-gray-500">units left</p>
-        </div>
-      </div>
-      {% empty %}
-      <p class="text-center text-gray-500 py-4">
-        All products are well stocked
-      </p>
-      {% endfor %}
+<div class="bg-white rounded-xl shadow-md p-6 mb-8">
+    <div class="flex items-center justify-between mb-4">
+        <h2 class="text-2xl font-bold text-gray-800">Recent Sales</h2>
+        <a href="{% url 'sales_list' %}" class="text-blue-600 hover:text-blue-800 font-medium">View All</a>
     </div>
-  </div>
+    <div class="overflow-x-auto">
+        <table class="min-w-full border border-gray-200 rounded-lg overflow-hidden">
+            <thead class="bg-gray-100">
+                <tr>
+                    <th class="px-4 py-3 text-left text-gray-700">Invoice</th>
+                    <th class="px-4 py-3 text-left text-gray-700">Customer</th>
+                    <th class="px-4 py-3 text-left text-gray-700">Amount</th>
+                    <th class="px-4 py-3 text-left text-gray-700">Date</th>
+                    <th class="px-4 py-3 text-left text-gray-700">Status</th>
+                </tr>
+            </thead>
+            <tbody class="divide-y divide-gray-200">
+                {% for sale in recent_sales %}
+                <tr class="hover:bg-gray-50">
+                    <td class="px-4 py-3">{{ sale.sale_number }}</td>
+                    <td class="px-4 py-3">{{ sale.customer_name }}</td>
+                    <td class="px-4 py-3">KES {{ sale.grand_total }}</td>
+                    <td class="px-4 py-3">{{ sale.created_at|date:"M d, Y" }}</td>
+                    <td class="px-4 py-3">
+                        <span class="bg-green-100 text-green-700 px-3 py-1 rounded-full text-sm">{{ sale.status }}</span>
+                    </td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="5" class="px-4 py-6 text-center text-gray-500">No recent sales found.</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+    <a href="{% url 'product_list' %}" class="bg-white p-6 rounded-xl shadow-md hover:shadow-lg transition">
+        <div class="flex items-center space-x-4">
+            <div class="bg-blue-100 p-4 rounded-full"><i class="fas fa-box text-blue-600 text-2xl"></i></div>
+            <div>
+                <h3 class="text-lg font-bold text-gray-800">Manage Products</h3>
+                <p class="text-gray-500 text-sm">Add, edit and manage inventory</p>
+            </div>
+        </div>
+    </a>
+    <a href="{% url 'new_sale' %}" class="bg-white p-6 rounded-xl shadow-md hover:shadow-lg transition">
+        <div class="flex items-center space-x-4">
+            <div class="bg-green-100 p-4 rounded-full"><i class="fas fa-cash-register text-green-600 text-2xl"></i></div>
+            <div>
+                <h3 class="text-lg font-bold text-gray-800">Create Sale</h3>
+                <p class="text-gray-500 text-sm">Record new customer sales</p>
+            </div>
+        </div>
+    </a>
+    <a href="{% url 'reports' %}" class="bg-white p-6 rounded-xl shadow-md hover:shadow-lg transition">
+        <div class="flex items-center space-x-4">
+            <div class="bg-yellow-100 p-4 rounded-full"><i class="fas fa-chart-line text-yellow-600 text-2xl"></i></div>
+            <div>
+                <h3 class="text-lg font-bold text-gray-800">Reports</h3>
+                <p class="text-gray-500 text-sm">View sales and finance reports</p>
+            </div>
+        </div>
+    </a>
 </div>
 {% endblock %}
