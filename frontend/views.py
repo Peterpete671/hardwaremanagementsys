@@ -448,3 +448,31 @@ def roles_list(request):
     )
     context = {'roles': roles}
     return render(request, 'frontend/roles_list.html', context)
+
+
+# Product Image upload
+
+@login_required
+def product_image_upload(request, product_id):
+    """Upload or replace a product image"""
+    from inventory.models import Product
+    product = get_object_or_404(Product, id=product_id)
+
+    if request.method == 'POST':
+        image = request.FILES.get('image')
+        if not image:
+            messages.error(request, 'No image selected')
+            return redirect('product_detail', product_id=product_id)
+        
+        #Delete old image from the disk if it exists
+        if product.image:
+            import os
+            if os.path.isfile(product.image.path):
+                os.remove(product.image.path)
+
+        product.image = image
+        product.save()
+        messages.success(request, 'Product image updated successfully')
+
+    return redirect('product_detail', product_id=product_id)
+        

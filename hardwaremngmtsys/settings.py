@@ -30,7 +30,11 @@ DEBUG = True
 
 AUTH_USER_MODEL = 'accounts.User'
 
-ALLOWED_HOSTS = []
+ALLOWED_HOSTS = [
+    '192.168.100.24',
+    'localhost',
+    '127.0.0.1'
+]
 
 
 # Application definition
@@ -154,3 +158,7 @@ REST_FRAMEWORK = {
         'rest_framework.permissions.IsAuthenticated',
     ],
 }
+
+#Media files (product images, uploads)
+MEDIA_URL = '/media/'
+MEDIA_ROOT = BASE_DIR / 'media'

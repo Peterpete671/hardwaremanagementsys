@@ -7,6 +7,8 @@ from rest_framework.decorators import action
 from rest_framework.response import Response
 from django.db.models import Sum, Max, Q
 from django.db import transaction
+from rest_framework.views import APIView
+from rest_framework.permissions import IsAuthenticated
 
 from .models import Category, Product, Warehouse, StockMovement
 from .serializers import (
@@ -171,3 +173,37 @@ class StockMovementViewSet(viewsets.ModelViewSet):
 
         response_serializer = StockMovementSerializer(movement)
         return Response(response_serializer.data, status=status.HTTP_201_CREATED)
+    
+class BarcodeLookupView(APIView):
+    """
+    GET /api/products/barcode/<barcode>/
+    Looks up a product by barcode or SKU and returns its details plus the current stock
+    Used by the POS Barcode scanner
+    """
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request, barcode):
+        #Try barcode field first, then fall back to SKU
+        product = (
+            Product.objects.filter(barcode=barcode, is_active=True).first()
+            or Product.objects.filter(sku=barcode, is_active=True).first()
+        )
+
+        if not product:
+            return Response({'error': 'Product not found'}, status=status.HTTP_404_NOT_FOUND)
+        
+        #Compute current stock across all warehouses
+        from django.db.models import Sum
+        stock = StockMovement.objects.filter(product=product).aggregate(
+            total=Sum('quantity')
+        )['total'] or 0
+
+        return Response({
+            'id': str(product.id),
+            'name': product.name,
+            'sku': product.sku,
+            'barcode': product.barcode or product.sku,
+            'unit_price': str(product.unit_price),
+            'stock': float(stock),
+            'image_url': request.build_absolute_uri(product.image.url) if product.image else None,
+        })

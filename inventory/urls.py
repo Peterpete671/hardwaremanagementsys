@@ -7,7 +7,7 @@ from django.urls import path, include
 from rest_framework.routers import DefaultRouter
 from .views import (
     CategoryViewSet, ProductViewSet, WarehouseViewSet,
-    StockViewSet, StockMovementViewSet
+    StockViewSet, StockMovementViewSet, BarcodeLookupView
 )
 
 router = DefaultRouter()
@@ -19,4 +19,5 @@ router.register(r'stocks', StockMovementViewSet, basename='stock-movement')
 urlpatterns = [
     path('stock/', StockViewSet.as_view({'get': 'list'}), name='stock-levels'),
     path('', include(router.urls)),
+    path('products/barcode/<str:barcode>/', BarcodeLookupView.as_view(), name='barcode-lookup')
 ]

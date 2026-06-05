@@ -31,4 +31,7 @@ urlpatterns = [
 
     # Role Management (ADMIN ONLY)
     path('admin/roles/', views.roles_list, name='roles_list'),
+
+    #Product image upload
+    path('products/<uuid:product_id>/upload-image/', views.product_image_upload, name='product_image_upload'),
 ]

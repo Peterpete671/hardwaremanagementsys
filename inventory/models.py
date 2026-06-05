@@ -70,6 +70,13 @@ class Product(models.Model):
         decimal_places=2,
         help_text="Selling price per unit"
     )
+    description = models.TextField(blank=True, default='', help_text="Optional product description")
+    image = models.ImageField(upload_to='products/images/', null=True, blank=True, help_text="Product Image")
+    barcode = models.CharField(
+        max_length=100, unique=True, blank=True, null=True, db_index=True,
+        help_text="Barcode value (EAN-13, Code128, etc.). Leave blank to use SKU."
+    )
+
     track_stock = models.BooleanField(
         default=True,
         help_text="False for services or non-tracked items"

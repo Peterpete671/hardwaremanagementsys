@@ -1,146 +1,359 @@
-{% extends 'frontend/base.html' %} {% block title %}New Sale - POS{% endblock %}
+{% extends 'frontend/base.html' %}
+{% block title %}New Sale - POS{% endblock %}
+
 {% block content %}
 <h1 class="text-3xl font-bold text-gray-800 mb-6">Point of Sale</h1>
 
 <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
-  <!-- Product Selection -->
-  <div class="lg:col-span-2">
-    <div class="bg-white p-6 rounded-lg shadow">
-      <input
-        type="text"
-        id="product-search"
-        placeholder="Search products..."
-        class="w-full px-4 py-2 border rounded-lg mb-4"
-      />
 
-      <div
-        class="grid grid-cols-2 md:grid-cols-3 gap-4 max-h-96 overflow-y-auto"
-      >
-        {% for item in products %}
-        <div
-          class="border rounded-lg p-4 hover:border-blue-500 cursor-pointer product-card"
-          data-id="{{ item.product.id }}"
-          data-name="{{ item.product.name }}"
-          data-price="{{ item.product.unit_price }}"
-          data-stock="{{ item.stock }}"
-        >
-          <h3 class="font-semibold text-sm mb-2">{{ item.product.name }}</h3>
-          <p class="text-xs text-gray-600 mb-2">{{ item.product.sku }}</p>
-          <div class="flex justify-between items-center">
-            <p class="font-bold text-blue-600">
-              KES {{ item.product.unit_price }}
-            </p>
-            <span class="text-xs px-2 py-1 rounded bg-gray-100"
-              >{{ item.stock }}</span
-            >
-          </div>
+    <!-- Left: Product search + scanner -->
+    <div class="lg:col-span-2 space-y-4">
+
+        <!-- Barcode Scanner Panel -->
+        <div class="bg-white p-4 rounded-lg shadow">
+            <div class="flex items-center justify-between mb-3">
+                <h2 class="font-bold text-gray-800">
+                    <i class="fas fa-barcode mr-2 text-blue-600"></i>Barcode Scanner
+                </h2>
+                <div class="flex gap-2">
+                    <button id="start-camera-btn" onclick="startCamera()"
+                        class="bg-blue-600 text-white px-4 py-1.5 rounded-lg text-sm hover:bg-blue-700">
+                        <i class="fas fa-camera mr-1"></i>Use Camera
+                    </button>
+                    <button id="stop-camera-btn" onclick="stopCamera()"
+                        class="bg-red-500 text-white px-4 py-1.5 rounded-lg text-sm hover:bg-red-600 hidden">
+                        <i class="fas fa-stop mr-1"></i>Stop
+                    </button>
+                </div>
+            </div>
+
+            <!-- Manual barcode entry -->
+            <div class="flex gap-2 mb-3">
+                <input type="text" id="barcode-input"
+                    placeholder="Scan or type barcode / SKU and press Enter..."
+                    class="flex-1 px-4 py-2 border rounded-lg focus:outline-none focus:border-blue-500 font-mono"
+                    autofocus autocomplete="off">
+                <button onclick="lookupBarcode()"
+                    class="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700">
+                    <i class="fas fa-search"></i>
+                </button>
+            </div>
+
+            <!-- Camera viewfinder -->
+            <div id="camera-container" class="hidden">
+                <div id="reader" class="w-full rounded-lg overflow-hidden border-2 border-blue-300"></div>
+                <p class="text-xs text-gray-500 mt-2 text-center">
+                    <i class="fas fa-info-circle mr-1"></i>
+                    Point camera at barcode. Product will be added automatically when detected.
+                </p>
+            </div>
+
+            <!-- Scan feedback -->
+            <div id="scan-feedback" class="hidden mt-2 p-3 rounded-lg text-sm font-medium"></div>
         </div>
-        {% endfor %}
-      </div>
+
+        <!-- Product Grid -->
+        <div class="bg-white p-4 rounded-lg shadow">
+            <input type="text" id="product-search"
+                placeholder="Search products by name or SKU..."
+                class="w-full px-4 py-2 border rounded-lg mb-4 focus:outline-none focus:border-blue-500">
+
+            <div class="grid grid-cols-2 md:grid-cols-3 gap-3 max-h-96 overflow-y-auto" id="product-grid">
+                {% for item in products %}
+                <div class="border rounded-lg p-3 hover:border-blue-500 hover:shadow-md cursor-pointer product-card transition"
+                    data-id="{{ item.product.id }}"
+                    data-name="{{ item.product.name }}"
+                    data-price="{{ item.product.unit_price }}"
+                    data-stock="{{ item.stock }}"
+                    data-sku="{{ item.product.sku }}"
+                    data-barcode="{{ item.product.barcode|default:item.product.sku }}">
+
+                    <!-- Product image or placeholder -->
+                    {% if item.product.image %}
+                    <img src="{{ item.product.image.url }}" alt="{{ item.product.name }}"
+                        class="w-full h-24 object-cover rounded mb-2">
+                    {% else %}
+                    <div class="w-full h-24 bg-gray-100 rounded mb-2 flex items-center justify-center">
+                        <i class="fas fa-box text-gray-300 text-3xl"></i>
+                    </div>
+                    {% endif %}
+
+                    <h3 class="font-semibold text-sm text-gray-800 leading-tight mb-1">{{ item.product.name }}</h3>
+                    <p class="text-xs text-gray-400 mb-2">{{ item.product.sku }}</p>
+                    <div class="flex justify-between items-center">
+                        <p class="font-bold text-blue-600 text-sm">KES {{ item.product.unit_price }}</p>
+                        <span class="text-xs px-2 py-0.5 rounded
+                            {% if item.stock > 10 %}bg-green-100 text-green-700
+                            {% elif item.stock > 0 %}bg-yellow-100 text-yellow-700
+                            {% else %}bg-red-100 text-red-700{% endif %}">
+                            {{ item.stock }}
+                        </span>
+                    </div>
+                </div>
+                {% empty %}
+                <div class="col-span-3 text-center py-12 text-gray-400">
+                    <i class="fas fa-box-open text-4xl mb-2 block"></i>
+                    No products available
+                </div>
+                {% endfor %}
+            </div>
+        </div>
     </div>
-  </div>
 
-  <!-- Cart -->
-  <div class="lg:col-span-1">
-    <div class="bg-white p-6 rounded-lg shadow sticky top-4">
-      <h2 class="text-xl font-bold mb-4">Cart</h2>
+    <!-- Right: Cart -->
+    <div class="lg:col-span-1">
+        <div class="bg-white p-5 rounded-lg shadow sticky top-4">
+            <h2 class="text-xl font-bold text-gray-800 mb-4">
+                <i class="fas fa-shopping-cart mr-2 text-blue-600"></i>Cart
+                <span id="cart-count" class="ml-2 text-sm bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full">0</span>
+            </h2>
 
-      <div id="cart-items" class="space-y-2 mb-4 max-h-64 overflow-y-auto">
-        <p class="text-gray-500 text-center py-8">Cart is empty</p>
-      </div>
+            <div id="cart-items" class="space-y-2 mb-4 max-h-72 overflow-y-auto">
+                <p class="text-gray-400 text-center py-8 text-sm">Cart is empty</p>
+            </div>
 
-      <div class="border-t pt-4">
-        <div class="flex justify-between mb-2">
-          <span class="text-gray-600">Subtotal:</span>
-          <span id="subtotal" class="font-bold">KES 0.00</span>
+            <div class="border-t pt-4 space-y-2">
+                <div class="flex justify-between text-sm">
+                    <span class="text-gray-600">Subtotal:</span>
+                    <span id="subtotal" class="font-semibold">KES 0.00</span>
+                </div>
+                <div class="flex justify-between">
+                    <span class="text-gray-600 font-bold">Total:</span>
+                    <span id="total" class="text-2xl font-bold text-blue-600">KES 0.00</span>
+                </div>
+            </div>
+
+            <div class="mt-4 space-y-2">
+                <button id="checkout-btn" onclick="checkout()"
+                    class="w-full bg-green-600 text-white py-3 rounded-lg hover:bg-green-700 font-semibold disabled:bg-gray-300 disabled:cursor-not-allowed"
+                    disabled>
+                    <i class="fas fa-check mr-2"></i>Checkout
+                </button>
+                <button onclick="clearCart()"
+                    class="w-full bg-gray-100 text-gray-600 py-2 rounded-lg hover:bg-gray-200 text-sm">
+                    <i class="fas fa-trash mr-2"></i>Clear Cart
+                </button>
+            </div>
         </div>
-        <div class="flex justify-between mb-4">
-          <span class="text-gray-600 text-lg font-bold">Total:</span>
-          <span id="total" class="text-2xl font-bold text-blue-600"
-            >KES 0.00</span
-          >
-        </div>
-
-        <button
-          id="checkout-btn"
-          class="w-full bg-green-600 text-white py-3 rounded-lg hover:bg-green-700 disabled:bg-gray-400"
-          disabled
-        >
-          <i class="fas fa-shopping-cart mr-2"></i>Checkout
-        </button>
-      </div>
     </div>
-  </div>
 </div>
 
+<!-- html5-qrcode for camera scanning -->
+<script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
+
 <script>
-  // Simple POS JavaScript (You'll need to enhance this with AJAX calls to your API)
-  let cart = [];
+// ─── State ────────────────────────────────────────────────────────────────────
+let cart = [];
+let html5QrCode = null;
+let lastScannedBarcode = null;
+let scanCooldown = false;
 
-  document.querySelectorAll(".product-card").forEach((card) => {
-    card.addEventListener("click", function () {
-      const product = {
-        id: this.dataset.id,
-        name: this.dataset.name,
-        price: parseFloat(this.dataset.price),
-        stock: parseInt(this.dataset.stock),
-      };
-
-      addToCart(product);
+// ─── Product cards (click to add) ─────────────────────────────────────────────
+document.querySelectorAll('.product-card').forEach(card => {
+    card.addEventListener('click', function() {
+        addToCart({
+            id: this.dataset.id,
+            name: this.dataset.name,
+            price: parseFloat(this.dataset.price),
+            stock: parseFloat(this.dataset.stock),
+            sku: this.dataset.sku,
+        });
     });
-  });
+});
 
-  function addToCart(product) {
-    const existing = cart.find((item) => item.id === product.id);
-    if (existing) {
-      if (existing.quantity < product.stock) {
-        existing.quantity++;
-      } else {
-        alert("Insufficient stock");
-        return;
-      }
-    } else {
-      cart.push({ ...product, quantity: 1 });
+// ─── Product search filter ─────────────────────────────────────────────────────
+document.getElementById('product-search').addEventListener('input', function() {
+    const q = this.value.toLowerCase();
+    document.querySelectorAll('.product-card').forEach(card => {
+        const match = card.dataset.name.toLowerCase().includes(q)
+                   || card.dataset.sku.toLowerCase().includes(q);
+        card.style.display = match ? '' : 'none';
+    });
+});
+
+// ─── Manual barcode input ──────────────────────────────────────────────────────
+document.getElementById('barcode-input').addEventListener('keydown', function(e) {
+    if (e.key === 'Enter') {
+        e.preventDefault();
+        lookupBarcode();
     }
-    updateCart();
-  }
+});
 
-  function updateCart() {
-    const cartDiv = document.getElementById("cart-items");
-    const checkoutBtn = document.getElementById("checkout-btn");
+function lookupBarcode() {
+    const val = document.getElementById('barcode-input').value.trim();
+    if (!val) return;
+    fetchProductByBarcode(val);
+    document.getElementById('barcode-input').value = '';
+}
+
+// ─── Camera scanner ───────────────────────────────────────────────────────────
+function startCamera() {
+    document.getElementById('camera-container').classList.remove('hidden');
+    document.getElementById('start-camera-btn').classList.add('hidden');
+    document.getElementById('stop-camera-btn').classList.remove('hidden');
+
+    html5QrCode = new Html5Qrcode("reader");
+    html5QrCode.start(
+        { facingMode: "environment" },
+        { fps: 10, qrbox: { width: 250, height: 150 } },
+        (decodedText) => {
+            if (scanCooldown || decodedText === lastScannedBarcode) return;
+            lastScannedBarcode = decodedText;
+            scanCooldown = true;
+            setTimeout(() => { scanCooldown = false; lastScannedBarcode = null; }, 2000);
+            fetchProductByBarcode(decodedText);
+        },
+        () => {} // ignore scan errors silently
+    ).catch(err => {
+        showFeedback('Camera error: ' + err, 'error');
+        stopCamera();
+    });
+}
+
+function stopCamera() {
+    if (html5QrCode) {
+        html5QrCode.stop().then(() => {
+            html5QrCode.clear();
+            html5QrCode = null;
+        }).catch(() => {});
+    }
+    document.getElementById('camera-container').classList.add('hidden');
+    document.getElementById('start-camera-btn').classList.remove('hidden');
+    document.getElementById('stop-camera-btn').classList.add('hidden');
+}
+
+// ─── Barcode API lookup ────────────────────────────────────────────────────────
+function getCookie(name) {
+    const match = document.cookie.match(new RegExp('(^| )' + name + '=([^;]+)'));
+    return match ? decodeURIComponent(match[2]) : null;
+}
+
+function fetchProductByBarcode(barcode) {
+    showFeedback('Looking up: ' + barcode + '...', 'info');
+    fetch(`/api/products/barcode/${encodeURIComponent(barcode)}/`, {
+        headers: { 'X-CSRFToken': getCookie('csrftoken') }
+    })
+    .then(res => {
+        if (!res.ok) throw new Error('not_found');
+        return res.json();
+    })
+    .then(product => {
+        addToCart({
+            id: product.id,
+            name: product.name,
+            price: parseFloat(product.unit_price),
+            stock: parseFloat(product.stock),
+            sku: product.sku,
+        });
+        showFeedback('Added: ' + product.name, 'success');
+    })
+    .catch(() => {
+        showFeedback('Product not found for barcode: ' + barcode, 'error');
+    });
+}
+
+function showFeedback(msg, type) {
+    const el = document.getElementById('scan-feedback');
+    el.classList.remove('hidden', 'bg-green-100', 'text-green-800', 'bg-red-100', 'text-red-800', 'bg-blue-100', 'text-blue-800');
+    if (type === 'success') el.classList.add('bg-green-100', 'text-green-800');
+    else if (type === 'error') el.classList.add('bg-red-100', 'text-red-800');
+    else el.classList.add('bg-blue-100', 'text-blue-800');
+    el.textContent = msg;
+    el.classList.remove('hidden');
+    if (type !== 'info') setTimeout(() => el.classList.add('hidden'), 3000);
+}
+
+// ─── Cart logic ───────────────────────────────────────────────────────────────
+function addToCart(product) {
+    if (product.stock <= 0) {
+        showFeedback(product.name + ' is out of stock', 'error');
+        return;
+    }
+    const existing = cart.find(i => i.id === product.id);
+    if (existing) {
+        if (existing.quantity >= product.stock) {
+            showFeedback('Insufficient stock for ' + product.name, 'error');
+            return;
+        }
+        existing.quantity++;
+    } else {
+        cart.push({ ...product, quantity: 1 });
+    }
+    renderCart();
+}
+
+function changeQty(id, delta) {
+    const item = cart.find(i => i.id === id);
+    if (!item) return;
+    item.quantity += delta;
+    if (item.quantity <= 0) cart = cart.filter(i => i.id !== id);
+    renderCart();
+}
+
+function removeFromCart(id) {
+    cart = cart.filter(i => i.id !== id);
+    renderCart();
+}
+
+function clearCart() {
+    cart = [];
+    renderCart();
+}
+
+function renderCart() {
+    const cartDiv = document.getElementById('cart-items');
+    const checkoutBtn = document.getElementById('checkout-btn');
+    const cartCount = document.getElementById('cart-count');
 
     if (cart.length === 0) {
-      cartDiv.innerHTML =
-        '<p class="text-gray-500 text-center py-8">Cart is empty</p>';
-      checkoutBtn.disabled = true;
-      document.getElementById("subtotal").textContent = "KES 0.00";
-      document.getElementById("total").textContent = "KES 0.00";
-      return;
+        cartDiv.innerHTML = '<p class="text-gray-400 text-center py-8 text-sm">Cart is empty</p>';
+        checkoutBtn.disabled = true;
+        document.getElementById('subtotal').textContent = 'KES 0.00';
+        document.getElementById('total').textContent = 'KES 0.00';
+        cartCount.textContent = '0';
+        return;
     }
 
-    let html = "";
+    let html = '';
     let subtotal = 0;
+    let totalQty = 0;
 
-    cart.forEach((item) => {
-      const itemTotal = item.price * item.quantity;
-      subtotal += itemTotal;
-
-      html += `
-                <div class="flex justify-between items-center p-2 bg-gray-50 rounded">
-                    <div class="flex-1">
-                        <p class="font-semibold text-sm">${item.name}</p>
-                        <p class="text-xs text-gray-600">KES ${item.price} x ${item.quantity}</p>
-                    </div>
-                    <p class="font-bold">KES ${itemTotal.toFixed(2)}</p>
-                </div>
-            `;
+    cart.forEach(item => {
+        const lineTotal = item.price * item.quantity;
+        subtotal += lineTotal;
+        totalQty += item.quantity;
+        html += `
+        <div class="flex items-center gap-2 p-2 bg-gray-50 rounded-lg">
+            <div class="flex-1 min-w-0">
+                <p class="font-semibold text-sm truncate">${item.name}</p>
+                <p class="text-xs text-gray-500">KES ${item.price.toFixed(2)} each</p>
+            </div>
+            <div class="flex items-center gap-1">
+                <button onclick="changeQty('${item.id}', -1)"
+                    class="w-6 h-6 rounded bg-gray-200 hover:bg-gray-300 text-sm font-bold flex items-center justify-center">−</button>
+                <span class="w-6 text-center text-sm font-bold">${item.quantity}</span>
+                <button onclick="changeQty('${item.id}', 1)"
+                    class="w-6 h-6 rounded bg-gray-200 hover:bg-gray-300 text-sm font-bold flex items-center justify-center">+</button>
+            </div>
+            <div class="text-right min-w-fit">
+                <p class="font-bold text-sm">KES ${lineTotal.toFixed(2)}</p>
+                <button onclick="removeFromCart('${item.id}')" class="text-red-400 hover:text-red-600 text-xs">remove</button>
+            </div>
+        </div>`;
     });
 
     cartDiv.innerHTML = html;
     checkoutBtn.disabled = false;
-    document.getElementById("subtotal").textContent =
-      `KES ${subtotal.toFixed(2)}`;
-    document.getElementById("total").textContent = `KES ${subtotal.toFixed(2)}`;
-  }
+    cartCount.textContent = totalQty;
+    document.getElementById('subtotal').textContent = 'KES ' + subtotal.toFixed(2);
+    document.getElementById('total').textContent = 'KES ' + subtotal.toFixed(2);
+}
+
+// ─── Checkout ─────────────────────────────────────────────────────────────────
+function checkout() {
+    if (cart.length === 0) return;
+    // TODO: wire to POST /api/sales/ then /api/sales/{id}/complete/
+    alert('Checkout: ' + cart.length + ' item(s), Total: ' + document.getElementById('total').textContent + '\n\nWire this to your sales API to complete.');
+}
 </script>
 {% endblock %}
