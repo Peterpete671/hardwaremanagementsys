@@ -26,8 +26,6 @@
                     </button>
                 </div>
             </div>
-
-            <!-- Manual barcode entry -->
             <div class="flex gap-2 mb-3">
                 <input type="text" id="barcode-input"
                     placeholder="Scan or type barcode / SKU and press Enter..."
@@ -38,18 +36,27 @@
                     <i class="fas fa-search"></i>
                 </button>
             </div>
-
-            <!-- Camera viewfinder -->
             <div id="camera-container" class="hidden">
                 <div id="reader" class="w-full rounded-lg overflow-hidden border-2 border-blue-300"></div>
                 <p class="text-xs text-gray-500 mt-2 text-center">
-                    <i class="fas fa-info-circle mr-1"></i>
-                    Point camera at barcode. Product will be added automatically when detected.
+                    <i class="fas fa-info-circle mr-1"></i>Point camera at barcode. Product added automatically.
                 </p>
             </div>
-
-            <!-- Scan feedback -->
             <div id="scan-feedback" class="hidden mt-2 p-3 rounded-lg text-sm font-medium"></div>
+        </div>
+
+        <!-- Warehouse selector -->
+        <div class="bg-white p-4 rounded-lg shadow">
+            <label class="block text-gray-700 font-semibold mb-2">
+                <i class="fas fa-warehouse mr-2 text-gray-500"></i>Warehouse <span class="text-red-500">*</span>
+            </label>
+            <select id="warehouse-select"
+                class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-blue-500 bg-white">
+                <option value="">Select warehouse...</option>
+                {% for warehouse in warehouses %}
+                <option value="{{ warehouse.id }}">{{ warehouse.name }}</option>
+                {% endfor %}
+            </select>
         </div>
 
         <!-- Product Grid -->
@@ -57,7 +64,6 @@
             <input type="text" id="product-search"
                 placeholder="Search products by name or SKU..."
                 class="w-full px-4 py-2 border rounded-lg mb-4 focus:outline-none focus:border-blue-500">
-
             <div class="grid grid-cols-2 md:grid-cols-3 gap-3 max-h-96 overflow-y-auto" id="product-grid">
                 {% for item in products %}
                 <div class="border rounded-lg p-3 hover:border-blue-500 hover:shadow-md cursor-pointer product-card transition"
@@ -67,8 +73,6 @@
                     data-stock="{{ item.stock }}"
                     data-sku="{{ item.product.sku }}"
                     data-barcode="{{ item.product.barcode|default:item.product.sku }}">
-
-                    <!-- Product image or placeholder -->
                     {% if item.product.image %}
                     <img src="{{ item.product.image.url }}" alt="{{ item.product.name }}"
                         class="w-full h-24 object-cover rounded mb-2">
@@ -77,7 +81,6 @@
                         <i class="fas fa-box text-gray-300 text-3xl"></i>
                     </div>
                     {% endif %}
-
                     <h3 class="font-semibold text-sm text-gray-800 leading-tight mb-1">{{ item.product.name }}</h3>
                     <p class="text-xs text-gray-400 mb-2">{{ item.product.sku }}</p>
                     <div class="flex justify-between items-center">
@@ -92,8 +95,7 @@
                 </div>
                 {% empty %}
                 <div class="col-span-3 text-center py-12 text-gray-400">
-                    <i class="fas fa-box-open text-4xl mb-2 block"></i>
-                    No products available
+                    <i class="fas fa-box-open text-4xl mb-2 block"></i>No products available
                 </div>
                 {% endfor %}
             </div>
@@ -112,7 +114,7 @@
                 <p class="text-gray-400 text-center py-8 text-sm">Cart is empty</p>
             </div>
 
-            <div class="border-t pt-4 space-y-2">
+            <div class="border-t pt-4 space-y-2 mb-4">
                 <div class="flex justify-between text-sm">
                     <span class="text-gray-600">Subtotal:</span>
                     <span id="subtotal" class="font-semibold">KES 0.00</span>
@@ -123,32 +125,45 @@
                 </div>
             </div>
 
-            <div class="mt-4 space-y-2">
+            <!-- Payment method -->
+            <div class="mb-4">
+                <label class="block text-sm font-semibold text-gray-700 mb-1">Payment Method</label>
+                <select id="payment-method"
+                    class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-blue-500 bg-white text-sm">
+                    <option value="CASH">Cash</option>
+                    <option value="MPESA">M-Pesa</option>
+                    <option value="CARD">Card</option>
+                    <option value="BANK">Bank Transfer</option>
+                </select>
+            </div>
+
+            <div class="space-y-2">
                 <button id="checkout-btn" onclick="checkout()"
                     class="w-full bg-green-600 text-white py-3 rounded-lg hover:bg-green-700 font-semibold disabled:bg-gray-300 disabled:cursor-not-allowed"
                     disabled>
-                    <i class="fas fa-check mr-2"></i>Checkout
+                    <i class="fas fa-check mr-2"></i>Complete Sale
                 </button>
                 <button onclick="clearCart()"
                     class="w-full bg-gray-100 text-gray-600 py-2 rounded-lg hover:bg-gray-200 text-sm">
                     <i class="fas fa-trash mr-2"></i>Clear Cart
                 </button>
             </div>
+
+            <!-- Status messages -->
+            <div id="checkout-status" class="hidden mt-3 p-3 rounded-lg text-sm text-center"></div>
         </div>
     </div>
 </div>
 
-<!-- html5-qrcode for camera scanning -->
+<!-- html5-qrcode -->
 <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
 
 <script>
-// ─── State ────────────────────────────────────────────────────────────────────
 let cart = [];
 let html5QrCode = null;
-let lastScannedBarcode = null;
 let scanCooldown = false;
 
-// ─── Product cards (click to add) ─────────────────────────────────────────────
+// ── Product cards ─────────────────────────────────────────────────────────────
 document.querySelectorAll('.product-card').forEach(card => {
     card.addEventListener('click', function() {
         addToCart({
@@ -161,7 +176,7 @@ document.querySelectorAll('.product-card').forEach(card => {
     });
 });
 
-// ─── Product search filter ─────────────────────────────────────────────────────
+// ── Search filter ─────────────────────────────────────────────────────────────
 document.getElementById('product-search').addEventListener('input', function() {
     const q = this.value.toLowerCase();
     document.querySelectorAll('.product-card').forEach(card => {
@@ -171,12 +186,9 @@ document.getElementById('product-search').addEventListener('input', function() {
     });
 });
 
-// ─── Manual barcode input ──────────────────────────────────────────────────────
+// ── Barcode input ─────────────────────────────────────────────────────────────
 document.getElementById('barcode-input').addEventListener('keydown', function(e) {
-    if (e.key === 'Enter') {
-        e.preventDefault();
-        lookupBarcode();
-    }
+    if (e.key === 'Enter') { e.preventDefault(); lookupBarcode(); }
 });
 
 function lookupBarcode() {
@@ -186,24 +198,22 @@ function lookupBarcode() {
     document.getElementById('barcode-input').value = '';
 }
 
-// ─── Camera scanner ───────────────────────────────────────────────────────────
+// ── Camera ────────────────────────────────────────────────────────────────────
 function startCamera() {
     document.getElementById('camera-container').classList.remove('hidden');
     document.getElementById('start-camera-btn').classList.add('hidden');
     document.getElementById('stop-camera-btn').classList.remove('hidden');
-
     html5QrCode = new Html5Qrcode("reader");
     html5QrCode.start(
         { facingMode: "environment" },
         { fps: 10, qrbox: { width: 250, height: 150 } },
-        (decodedText) => {
-            if (scanCooldown || decodedText === lastScannedBarcode) return;
-            lastScannedBarcode = decodedText;
+        (decoded) => {
+            if (scanCooldown) return;
             scanCooldown = true;
-            setTimeout(() => { scanCooldown = false; lastScannedBarcode = null; }, 2000);
-            fetchProductByBarcode(decodedText);
+            setTimeout(() => { scanCooldown = false; }, 2000);
+            fetchProductByBarcode(decoded);
         },
-        () => {} // ignore scan errors silently
+        () => {}
     ).catch(err => {
         showFeedback('Camera error: ' + err, 'error');
         stopCamera();
@@ -212,17 +222,14 @@ function startCamera() {
 
 function stopCamera() {
     if (html5QrCode) {
-        html5QrCode.stop().then(() => {
-            html5QrCode.clear();
-            html5QrCode = null;
-        }).catch(() => {});
+        html5QrCode.stop().then(() => { html5QrCode.clear(); html5QrCode = null; }).catch(() => {});
     }
     document.getElementById('camera-container').classList.add('hidden');
     document.getElementById('start-camera-btn').classList.remove('hidden');
     document.getElementById('stop-camera-btn').classList.add('hidden');
 }
 
-// ─── Barcode API lookup ────────────────────────────────────────────────────────
+// ── Barcode API ───────────────────────────────────────────────────────────────
 function getCookie(name) {
     const match = document.cookie.match(new RegExp('(^| )' + name + '=([^;]+)'));
     return match ? decodeURIComponent(match[2]) : null;
@@ -233,28 +240,17 @@ function fetchProductByBarcode(barcode) {
     fetch(`/api/products/barcode/${encodeURIComponent(barcode)}/`, {
         headers: { 'X-CSRFToken': getCookie('csrftoken') }
     })
-    .then(res => {
-        if (!res.ok) throw new Error('not_found');
-        return res.json();
-    })
+    .then(res => { if (!res.ok) throw new Error(); return res.json(); })
     .then(product => {
-        addToCart({
-            id: product.id,
-            name: product.name,
-            price: parseFloat(product.unit_price),
-            stock: parseFloat(product.stock),
-            sku: product.sku,
-        });
+        addToCart({ id: product.id, name: product.name, price: parseFloat(product.unit_price), stock: parseFloat(product.stock), sku: product.sku });
         showFeedback('Added: ' + product.name, 'success');
     })
-    .catch(() => {
-        showFeedback('Product not found for barcode: ' + barcode, 'error');
-    });
+    .catch(() => showFeedback('Product not found: ' + barcode, 'error'));
 }
 
 function showFeedback(msg, type) {
     const el = document.getElementById('scan-feedback');
-    el.classList.remove('hidden', 'bg-green-100', 'text-green-800', 'bg-red-100', 'text-red-800', 'bg-blue-100', 'text-blue-800');
+    el.className = 'mt-2 p-3 rounded-lg text-sm font-medium';
     if (type === 'success') el.classList.add('bg-green-100', 'text-green-800');
     else if (type === 'error') el.classList.add('bg-red-100', 'text-red-800');
     else el.classList.add('bg-blue-100', 'text-blue-800');
@@ -263,18 +259,12 @@ function showFeedback(msg, type) {
     if (type !== 'info') setTimeout(() => el.classList.add('hidden'), 3000);
 }
 
-// ─── Cart logic ───────────────────────────────────────────────────────────────
+// ── Cart ──────────────────────────────────────────────────────────────────────
 function addToCart(product) {
-    if (product.stock <= 0) {
-        showFeedback(product.name + ' is out of stock', 'error');
-        return;
-    }
+    if (product.stock <= 0) { showFeedback(product.name + ' is out of stock', 'error'); return; }
     const existing = cart.find(i => i.id === product.id);
     if (existing) {
-        if (existing.quantity >= product.stock) {
-            showFeedback('Insufficient stock for ' + product.name, 'error');
-            return;
-        }
+        if (existing.quantity >= product.stock) { showFeedback('Insufficient stock for ' + product.name, 'error'); return; }
         existing.quantity++;
     } else {
         cart.push({ ...product, quantity: 1 });
@@ -290,15 +280,8 @@ function changeQty(id, delta) {
     renderCart();
 }
 
-function removeFromCart(id) {
-    cart = cart.filter(i => i.id !== id);
-    renderCart();
-}
-
-function clearCart() {
-    cart = [];
-    renderCart();
-}
+function removeFromCart(id) { cart = cart.filter(i => i.id !== id); renderCart(); }
+function clearCart() { cart = []; renderCart(); }
 
 function renderCart() {
     const cartDiv = document.getElementById('cart-items');
@@ -317,7 +300,6 @@ function renderCart() {
     let html = '';
     let subtotal = 0;
     let totalQty = 0;
-
     cart.forEach(item => {
         const lineTotal = item.price * item.quantity;
         subtotal += lineTotal;
@@ -329,11 +311,9 @@ function renderCart() {
                 <p class="text-xs text-gray-500">KES ${item.price.toFixed(2)} each</p>
             </div>
             <div class="flex items-center gap-1">
-                <button onclick="changeQty('${item.id}', -1)"
-                    class="w-6 h-6 rounded bg-gray-200 hover:bg-gray-300 text-sm font-bold flex items-center justify-center">−</button>
+                <button onclick="changeQty('${item.id}', -1)" class="w-6 h-6 rounded bg-gray-200 hover:bg-gray-300 text-sm font-bold flex items-center justify-center">−</button>
                 <span class="w-6 text-center text-sm font-bold">${item.quantity}</span>
-                <button onclick="changeQty('${item.id}', 1)"
-                    class="w-6 h-6 rounded bg-gray-200 hover:bg-gray-300 text-sm font-bold flex items-center justify-center">+</button>
+                <button onclick="changeQty('${item.id}', 1)" class="w-6 h-6 rounded bg-gray-200 hover:bg-gray-300 text-sm font-bold flex items-center justify-center">+</button>
             </div>
             <div class="text-right min-w-fit">
                 <p class="font-bold text-sm">KES ${lineTotal.toFixed(2)}</p>
@@ -349,11 +329,103 @@ function renderCart() {
     document.getElementById('total').textContent = 'KES ' + subtotal.toFixed(2);
 }
 
-// ─── Checkout ─────────────────────────────────────────────────────────────────
-function checkout() {
+// ── Checkout — fully wired to API ─────────────────────────────────────────────
+async function checkout() {
+    const warehouseId = document.getElementById('warehouse-select').value;
+    const paymentMethod = document.getElementById('payment-method').value;
+    const checkoutBtn = document.getElementById('checkout-btn');
+    const statusEl = document.getElementById('checkout-status');
+
+    if (!warehouseId) {
+        showStatus('Please select a warehouse before completing the sale.', 'error');
+        return;
+    }
     if (cart.length === 0) return;
-    // TODO: wire to POST /api/sales/ then /api/sales/{id}/complete/
-    alert('Checkout: ' + cart.length + ' item(s), Total: ' + document.getElementById('total').textContent + '\n\nWire this to your sales API to complete.');
+
+    checkoutBtn.disabled = true;
+    checkoutBtn.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>Processing...';
+    showStatus('Creating sale...', 'info');
+
+    const csrfToken = getCookie('csrftoken');
+    const headers = { 'Content-Type': 'application/json', 'X-CSRFToken': csrfToken };
+    const grand_total = cart.reduce((sum, i) => sum + (i.price * i.quantity), 0);
+
+    try {
+        // Step 1: Create sale
+        const saleRes = await fetch('/api/sales/', {
+            method: 'POST',
+            headers,
+            body: JSON.stringify({ warehouse: warehouseId })
+        });
+        if (!saleRes.ok) {
+            const err = await saleRes.json();
+            throw new Error(err.detail || err.warehouse?.[0] || 'Failed to create sale');
+        }
+        const sale = await saleRes.json();
+        const saleId = sale.id;
+
+        showStatus('Adding items...', 'info');
+
+        // Step 2: Add each item
+        for (const item of cart) {
+            const itemRes = await fetch(`/api/sales/${saleId}/items/`, {
+                method: 'POST',
+                headers,
+                body: JSON.stringify({ product: item.id, quantity: item.quantity })
+            });
+            if (!itemRes.ok) {
+                const err = await itemRes.json();
+                throw new Error(err.detail || err.error || `Failed to add item: ${item.name}`);
+            }
+        }
+
+        showStatus('Recording payment...', 'info');
+
+        // Step 3: Record payment
+        const paymentRes = await fetch(`/api/sales/${saleId}/payments/`, {
+            method: 'POST',
+            headers,
+            body: JSON.stringify({ payment_method: paymentMethod, amount: grand_total.toFixed(2) })
+        });
+        if (!paymentRes.ok) {
+            const err = await paymentRes.json();
+            throw new Error(err.detail || err.error || 'Failed to record payment');
+        }
+
+        showStatus('Completing sale...', 'info');
+
+        // Step 4: Complete sale
+        const completeRes = await fetch(`/api/sales/${saleId}/complete/`, {
+            method: 'POST',
+            headers,
+            body: JSON.stringify({})
+        });
+        if (!completeRes.ok) {
+            const err = await completeRes.json();
+            throw new Error(err.detail || err.error || 'Failed to complete sale');
+        }
+
+        // Success
+        showStatus('Sale completed successfully! Redirecting...', 'success');
+        cart = [];
+        renderCart();
+        setTimeout(() => { window.location.href = `/sales/${saleId}/`; }, 1500);
+
+    } catch (err) {
+        showStatus('Error: ' + err.message, 'error');
+        checkoutBtn.disabled = false;
+        checkoutBtn.innerHTML = '<i class="fas fa-check mr-2"></i>Complete Sale';
+    }
+}
+
+function showStatus(msg, type) {
+    const el = document.getElementById('checkout-status');
+    el.className = 'mt-3 p-3 rounded-lg text-sm text-center font-medium';
+    if (type === 'success') el.classList.add('bg-green-100', 'text-green-800');
+    else if (type === 'error') el.classList.add('bg-red-100', 'text-red-800');
+    else el.classList.add('bg-blue-100', 'text-blue-800');
+    el.textContent = msg;
+    el.classList.remove('hidden');
 }
 </script>
 {% endblock %}

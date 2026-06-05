@@ -34,4 +34,7 @@ urlpatterns = [
 
     #Product image upload
     path('products/<uuid:product_id>/upload-image/', views.product_image_upload, name='product_image_upload'),
+
+    #Create product
+    path('products/create/', views.create_product, name='create_product'),
 ]

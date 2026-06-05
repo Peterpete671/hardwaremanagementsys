@@ -475,4 +475,100 @@ def product_image_upload(request, product_id):
         messages.success(request, 'Product image updated successfully')
 
     return redirect('product_detail', product_id=product_id)
+
+
+# Create Product
+
+@login_required
+def create_product(request):
+    """Create a new product (ADMIN, STOREKEEPER, MANAGERS only)."""
+    from inventory.models import Category, Warehouse
+    can_manage = _is_admin(request.user) or request.user.user_roles.filter(
+        role__name__in=['MANAGER', 'STOREKEEPER'], is_active=True
+    ).exists()
+
+    if not can_manage:
+        messages.error(request, 'You do not have permission to add products')
+        return redirect('product_list')
+    
+    categories = Category.objects.filter(is_active=True)
+    warehouses = Warehouse.objects.filter(is_active=True)
+
+    if request.method == 'POST':
+        name = request.POST.get('name', '').strip()
+        sku = request.POST.get('sku', '').strip()
+        barcode = request.POST.get('barcode', '').strip() or None
+        description = request.POST.get('description', '').strip()
+        category_id = request.POST.get('category')
+        unit_cost = request.POST.get('unit_cost', '0')
+        unit_price = request.POST.get('unit_price', '0')
+        track_stock = request.POST.get('track_stock') == 'on'
+        initial_stock = request.POST.get('initial_stock', '0')
+        warehouse_id = request.POST.get('warehouse')
+        image = request.FILES.get('image')
+
+        errors = []
+        if not name: errors.append('Product name is required')
+        if not sku: errors.append('SKU is required')
+        elif Product.objects.filter(sku=sku).exists():
+            errors.append('A product with this SKU already exists')
+        if barcode and Product.objects.filter(barcode=barcode).exists():
+            errors.append('A product with this barcode already exists')
+        if not category_id: errors.append('Category is required')
+
+        try:
+            unit_cost = float(unit_cost)
+            unit_price = float(unit_price)
+            initial_stock = float(initial_stock)
+        except ValueError:
+            errors.append('Cost, price, and stock must be numbers')
+
+        if errors:
+            context = {
+                'errors': errors,
+                'categories': categories,
+                'warehouses': warehouses,
+                'form': request.POST,
+            }
+            return render(request, 'frontend/create_product.html', context)
         
+        from decimal import Decimal
+        from django.db import transaction as db_transaction
+        try:
+            with db_transaction.atomic():
+                product = Product.objects.create(
+                    name=name, sku=sku, barcode=barcode,
+                    description=description,
+                    category_id=category_id,
+                    unit_cost=Decimal(str(unit_cost)),
+                    unit_price=Decimal(str(unit_price)),
+                    track_stock=track_stock,
+                    is_active=True,
+                )
+                if image:
+                    product.image = image
+                    product.save()
+
+                #Create opening stock movement if provided
+                if track_stock and initial_stock > 0 and warehouse_id:
+                    StockMovement.objects.create(
+                        product=product,
+                        warehouse_id=warehouse_id,
+                        movement_type='IN',
+                        quantity=Decimal(str(initial_stock)),
+                        notes='Opening stock',
+                        created_by=request.user,
+                    )
+                
+            messages.success(request, f'Product "{name}" created successfully.')
+            return redirect('product_detail', product_id=product.id)
+        
+        except Exception as e:
+            messages.error(request, f'Error creating product: {str(e)}')
+
+    context = {
+        'categories': categories,
+        'warehouses': warehouses,
+        'form': {},
+    }
+    return render(request, 'frontend/create_product.html', context)
